@@ -4,7 +4,7 @@ import {
   Lock, ToggleLeft, ToggleRight, Check, X, Trash2, Plus, LogOut,
   ClipboardList, Settings, Users, RotateCcw
 } from "lucide-react";
-import { store, APPLICATION_TYPES, notifyDiscord, notifyDiscordOpenStatus, type Application, type Question, type ApplicationType, type AppStep } from "@/lib/store";
+import { store, useAppStore, APPLICATION_TYPES, notifyDiscord, notifyDiscordOpenStatus, type Application, type Question, type ApplicationType, type AppStep } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import { toast } from "sonner";
 
@@ -15,10 +15,7 @@ const Admin = () => {
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState<"dashboard" | "questions" | "review">("dashboard");
 
-  const [config, setConfig] = useState(store.getConfig());
-  const [applications, setApplications] = useState(store.getApplications());
-  const [questions, setQuestions] = useState(store.getQuestions());
-  const [steps, setSteps] = useState(store.getSteps());
+  const { config, applications, questions, steps, loading } = useAppStore();
 
   const [newStep, setNewStep] = useState({ name: "", description: "" });
   const [newQ, setNewQ] = useState<{ label: string; step: number; type: 'text' | 'textarea' | 'select' | 'boolean'; appType: string }>({
@@ -39,7 +36,6 @@ const Admin = () => {
     const isOpening = !config.recruitmentOpen;
     const next = { ...config, recruitmentOpen: isOpening };
     store.setConfig(next);
-    setConfig(next);
     toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
 
     if (next.discordWebhookUrlOpen) {
@@ -55,7 +51,6 @@ const Admin = () => {
         },
         (newId) => {
           const cfgWithId = { ...next, discordWebhookMessageIdOpen: newId };
-          setConfig(cfgWithId);
           store.setConfig(cfgWithId);
         }
       );
@@ -70,7 +65,6 @@ const Admin = () => {
       : current.filter((t) => t !== type);
     const updated = { ...config, openApplicationTypes: next };
     store.setConfig(updated);
-    setConfig(updated);
     toast.success(`${type} applications ${isOpening ? "opened" : "closed"}`);
 
     if (updated.discordWebhookUrlOpen) {
@@ -86,22 +80,19 @@ const Admin = () => {
         },
         (newId) => {
           const cfgWithId = { ...updated, discordWebhookMessageIdOpen: newId };
-          setConfig(cfgWithId);
           store.setConfig(cfgWithId);
         }
       );
     }
   };
 
-  const handleStatus = (id: string, status: "Accepted" | "Rejected") => {
-    store.updateApplicationStatus(id, status);
-    setApplications(store.getApplications());
+  const handleStatus = async (id: string, status: "Accepted" | "Rejected") => {
+    await store.updateApplicationStatus(id, status, applications, config);
     toast.success(`Application ${status.toLowerCase()}`);
   };
 
-  const handleDelete = (id: string) => {
-    store.deleteApplication(id);
-    setApplications(store.getApplications());
+  const handleDelete = async (id: string) => {
+    await store.deleteApplication(id);
     toast.success("Application deleted");
   };
 
@@ -117,7 +108,6 @@ const Admin = () => {
     };
     const updated = [...questions, q];
     store.setQuestions(updated);
-    setQuestions(updated);
     setNewQ({ label: "", step: steps[0]?.id || 1, type: "text", appType: "General" });
     toast.success("Question added");
   };
@@ -125,7 +115,6 @@ const Admin = () => {
   const removeQuestion = (id: string) => {
     const updated = questions.filter((q) => q.id !== id);
     store.setQuestions(updated);
-    setQuestions(updated);
     toast.success("Question removed");
   };
 
@@ -134,7 +123,6 @@ const Admin = () => {
     const s: AppStep = { id: Date.now(), name: newStep.name, description: newStep.description };
     const updated = [...steps, s];
     store.setSteps(updated);
-    setSteps(updated);
     if (!newQ.step) setNewQ({ ...newQ, step: s.id });
     setNewStep({ name: "", description: "" });
     toast.success("Step added");
@@ -143,7 +131,6 @@ const Admin = () => {
   const removeStep = (id: number) => {
     const updated = steps.filter(s => s.id !== id);
     store.setSteps(updated);
-    setSteps(updated);
     toast.success("Step removed");
   };
 
@@ -178,6 +165,8 @@ const Admin = () => {
       </PageWrapper>
     );
   }
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-gold font-bold">Loading secure portal...</div>;
 
   const pending = applications.filter((a) => a.status === "Pending");
 
@@ -289,9 +278,8 @@ const Admin = () => {
                 <h2 className="font-display text-xl font-bold text-gold-light mb-4">Clear Results</h2>
                 <p className="text-sm text-muted-foreground mb-4">Remove all accepted and rejected applications from the results page</p>
                 <button
-                  onClick={() => {
-                    store.clearResults();
-                    setApplications(store.getApplications());
+                  onClick={async () => {
+                    await store.clearResults(applications);
                     toast.success("Results cleared — only pending applications remain");
                   }}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-crimson/20 border border-crimson/40 text-crimson font-semibold hover:bg-crimson/30 transition-colors"
@@ -313,7 +301,7 @@ const Admin = () => {
                         value={config.discordWebhookUrlOpen || ""}
                         onChange={(e) => {
                           const updated = { ...config, discordWebhookUrlOpen: e.target.value, discordWebhookMessageIdOpen: "" };
-                          setConfig(updated); store.setConfig(updated);
+                          store.setConfig(updated);
                         }}
                         placeholder="https://discord.com/api/webhooks/..."
                         className="w-full rounded-xl border border-border/30 bg-background/10 px-4 py-2.5 text-foreground placeholder:text-white focus:outline-none focus:ring-2 focus:ring-emerald/50"
@@ -321,7 +309,7 @@ const Admin = () => {
                       <button
                         onClick={() => {
                           const u = { ...config, discordWebhookMessageIdOpen: "" };
-                          setConfig(u); store.setConfig(u);
+                          store.setConfig(u);
                           toast.success("Webhook Link Reset", { description: "The next Status toggle will post a new embedded message." });
                         }}
                         className="px-4 py-2.5 rounded-xl bg-background/20 border border-border/30 text-white hover:bg-white/10 transition-colors"
@@ -339,7 +327,7 @@ const Admin = () => {
                       value={config.discordWebhookUrlResults || ""}
                       onChange={(e) => {
                         const updated = { ...config, discordWebhookUrlResults: e.target.value };
-                        setConfig(updated); store.setConfig(updated);
+                        store.setConfig(updated);
                       }}
                       placeholder="https://discord.com/api/webhooks/..."
                       className="w-full rounded-xl border border-border/30 bg-background/10 px-4 py-2.5 text-foreground placeholder:text-white focus:outline-none focus:ring-2 focus:ring-gold/50"

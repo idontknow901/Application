@@ -2,12 +2,12 @@ import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowRight, Shield, Users, Clock, Train, Zap, Globe } from "lucide-react";
-import { store } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import ScrollingMarquee from "@/components/ScrollingMarquee";
 import PageWrapper from "@/components/PageWrapper";
 
 const Index = () => {
-  const config = store.getConfig();
+  const { config } = useAppStore();
   const isOpen = config.recruitmentOpen;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -191,8 +191,8 @@ const Index = () => {
           >
             <div
               className={`inline-flex items-center gap-3 px-6 py-3 rounded-full text-lg font-bold ${isOpen
-                  ? "gradient-gold text-primary-foreground animate-pulse-glow"
-                  : "bg-crimson/20 border border-crimson/50 text-crimson"
+                ? "gradient-gold text-primary-foreground animate-pulse-glow"
+                : "bg-crimson/20 border border-crimson/50 text-crimson"
                 }`}
             >
               <span

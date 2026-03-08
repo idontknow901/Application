@@ -1,7 +1,7 @@
-import { store, type ApplicationType } from "@/lib/store";
+import { useAppStore, type ApplicationType } from "@/lib/store";
 
 const ScrollingMarquee = () => {
-  const config = store.getConfig();
+  const { config } = useAppStore();
   const openTypes = config.openApplicationTypes || [];
 
   if (!config.recruitmentOpen || openTypes.length === 0) return null;

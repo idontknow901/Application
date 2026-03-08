@@ -1,3 +1,7 @@
+import { useState, useEffect } from "react";
+import { db } from "./firebase";
+import { doc, collection, onSnapshot, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
+
 export type ApplicationType =
   | 'Railway Police Force [Mod]'
   | 'Railway Promotion Board [Public Relation Department]'
@@ -22,7 +26,7 @@ export interface Question {
   type: 'text' | 'textarea' | 'select' | 'boolean';
   options?: string[];
   required: boolean;
-  appType?: ApplicationType | 'General'; // if set, only shown for this app type (step 2 questions), 'General' for all
+  appType?: ApplicationType | 'General';
 }
 
 export interface Application {
@@ -43,39 +47,17 @@ export interface AppConfig {
   discordWebhookMessageIdOpen?: string;
 }
 
-const DEFAULT_STEPS: AppStep[] = [
+export const DEFAULT_STEPS: AppStep[] = [
   { id: 1, name: "Discord Info & Role", description: "Basic details about you" },
   { id: 2, name: "Questions", description: "Role-specific and general questions" },
 ];
-const DEFAULT_QUESTIONS: Question[] = [
-  // General
+export const DEFAULT_QUESTIONS: Question[] = [
   { id: 'q1', step: 1, label: 'What is your Discord Username?', type: 'text', required: true, appType: 'General' },
   { id: 'q2', step: 1, label: 'What is your Discord User ID?', type: 'text', required: true, appType: 'General' },
   { id: 'q-reason', step: 2, label: 'Why do you want to join this department?', type: 'textarea', required: true, appType: 'General' },
 ];
 
-const STORAGE_KEYS = {
-  config: 'epic-rail-config',
-  applications: 'epic-rail-applications',
-  questions: 'epic-rail-questions',
-  steps: 'epic-rail-steps',
-  adminAuth: 'epic-rail-admin-auth',
-};
-
-function getItem<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function setItem<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-const DEFAULT_CONFIG: AppConfig = {
+export const DEFAULT_CONFIG: AppConfig = {
   recruitmentOpen: true,
   openApplicationTypes: [...APPLICATION_TYPES],
   discordWebhookUrlResults: "",
@@ -126,93 +108,111 @@ export const notifyDiscordOpenStatus = async (
   }
 };
 
+export function useAppStore() {
+  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const [steps, setSteps] = useState<AppStep[]>(DEFAULT_STEPS);
+  const [questions, setQuestions] = useState<Question[]>(DEFAULT_QUESTIONS);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let componentsLoaded = 0;
+    const checkDone = () => {
+      componentsLoaded++;
+      if (componentsLoaded >= 4) {
+        setLoading(false);
+      }
+    };
+
+    const unsubConfig = onSnapshot(doc(db, "settings", "config"), (docSn) => {
+      if (docSn.exists()) {
+        const data = docSn.data() as AppConfig;
+        if (!data.openApplicationTypes) data.openApplicationTypes = [...APPLICATION_TYPES];
+        setConfig(data);
+      } else {
+        setDoc(doc(db, "settings", "config"), DEFAULT_CONFIG);
+        setConfig(DEFAULT_CONFIG);
+      }
+      checkDone();
+    });
+
+    const unsubSteps = onSnapshot(doc(db, "settings", "steps"), (docSn) => {
+      if (docSn.exists()) setSteps(docSn.data()?.items || DEFAULT_STEPS);
+      else { setDoc(doc(db, "settings", "steps"), { items: DEFAULT_STEPS }); setSteps(DEFAULT_STEPS); }
+      checkDone();
+    });
+
+    const unsubQ = onSnapshot(doc(db, "settings", "questions"), (docSn) => {
+      if (docSn.exists()) setQuestions(docSn.data()?.items || DEFAULT_QUESTIONS);
+      else { setDoc(doc(db, "settings", "questions"), { items: DEFAULT_QUESTIONS }); setQuestions(DEFAULT_QUESTIONS); }
+      checkDone();
+    });
+
+    const unsubApps = onSnapshot(collection(db, "applications"), (snap) => {
+      const apps: Application[] = [];
+      snap.forEach(d => apps.push(d.data() as Application));
+      setApplications(apps);
+      checkDone();
+    });
+
+    return () => { unsubConfig(); unsubSteps(); unsubQ(); unsubApps(); };
+  }, []);
+
+  return { config, steps, questions, applications, loading };
+}
+
 export const store = {
-  getConfig: (): AppConfig => {
-    const cfg = getItem(STORAGE_KEYS.config, DEFAULT_CONFIG);
-    // Migration: ensure openApplicationTypes exists
-    if (!cfg.openApplicationTypes) {
-      cfg.openApplicationTypes = [...APPLICATION_TYPES];
-    } else {
-      cfg.openApplicationTypes = cfg.openApplicationTypes.filter(t => APPLICATION_TYPES.includes(t as any));
-    }
-    if (typeof cfg.discordWebhookUrlResults !== "string") {
-      cfg.discordWebhookUrlResults = "";
-    }
-    if (typeof cfg.discordWebhookUrlOpen !== "string") {
-      cfg.discordWebhookUrlOpen = "";
-    }
-    if (typeof cfg.discordWebhookMessageIdOpen !== "string") {
-      cfg.discordWebhookMessageIdOpen = "";
-    }
-    return cfg;
+  isAdminAuthenticated: (): boolean => {
+    return sessionStorage.getItem('epic-rail-admin-auth') === 'true';
   },
-  setConfig: (config: AppConfig) => setItem(STORAGE_KEYS.config, config),
-
-  getSteps: (): AppStep[] => getItem(STORAGE_KEYS.steps, DEFAULT_STEPS),
-  setSteps: (s: AppStep[]) => setItem(STORAGE_KEYS.steps, s),
-
-  getQuestions: (): Question[] => getItem(STORAGE_KEYS.questions, DEFAULT_QUESTIONS),
-  setQuestions: (q: Question[]) => setItem(STORAGE_KEYS.questions, q),
-
-  getApplications: (): Application[] => getItem(STORAGE_KEYS.applications, []),
-
-  addApplication: (app: Omit<Application, 'id' | 'status' | 'submittedAt'>): Application => {
-    const apps = store.getApplications();
+  setAdminAuth: (val: boolean) => {
+    if (val) sessionStorage.setItem('epic-rail-admin-auth', 'true');
+    else sessionStorage.removeItem('epic-rail-admin-auth');
+  },
+  setConfig: async (config: AppConfig) => {
+    await setDoc(doc(db, "settings", "config"), config);
+  },
+  setSteps: async (items: AppStep[]) => {
+    await setDoc(doc(db, "settings", "steps"), { items });
+  },
+  setQuestions: async (items: Question[]) => {
+    await setDoc(doc(db, "settings", "questions"), { items });
+  },
+  addApplication: async (app: Omit<Application, 'id' | 'status' | 'submittedAt'>): Promise<Application> => {
+    const id = 'APP-' + Date.now().toString(36).toUpperCase();
     const newApp: Application = {
       ...app,
-      id: 'APP-' + Date.now().toString(36).toUpperCase(),
+      id,
       status: 'Pending',
       submittedAt: new Date().toISOString(),
     };
-    apps.push(newApp);
-    setItem(STORAGE_KEYS.applications, apps);
+    await setDoc(doc(db, "applications", id), newApp);
     return newApp;
   },
-
-  updateApplicationStatus: (id: string, status: 'Accepted' | 'Rejected') => {
-    const apps = store.getApplications();
+  updateApplicationStatus: async (id: string, status: 'Accepted' | 'Rejected', apps: Application[], config: AppConfig) => {
+    await updateDoc(doc(db, "applications", id), { status });
     const idx = apps.findIndex(a => a.id === id);
-    if (idx !== -1) {
-      apps[idx].status = status;
-      setItem(STORAGE_KEYS.applications, apps);
+    if (idx !== -1 && config.discordWebhookUrlResults) {
+      const accepted = apps.filter(a => a.status === 'Accepted').length + (status === 'Accepted' ? 1 : 0) - (apps[idx].status === 'Accepted' ? 1 : 0);
+      const rejected = apps.filter(a => a.status === 'Rejected').length + (status === 'Rejected' ? 1 : 0) - (apps[idx].status === 'Rejected' ? 1 : 0);
+      const pending = apps.filter(a => a.status === 'Pending').length - (apps[idx].status === 'Pending' ? 1 : 0);
 
-      const cfg = store.getConfig();
-      if (cfg.discordWebhookUrlResults) {
-        const accepted = apps.filter(a => a.status === 'Accepted').length;
-        const rejected = apps.filter(a => a.status === 'Rejected').length;
-        const pending = apps.filter(a => a.status === 'Pending').length;
-
-        notifyDiscord(cfg.discordWebhookUrlResults, {
-          embeds: [{
-            title: `Application ${status}`,
-            description: `**${apps[idx].discordUsername}** has been **${status.toLowerCase()}** for the **${apps[idx].applicationType}** role.\n\n**Current Stats:**\n✅ Accepted: ${accepted}\n❌ Rejected: ${rejected}\n⏳ Pending: ${pending}`,
-            color: status === 'Accepted' ? 0x00ff00 : 0xff0000,
-          }]
-        });
-      }
+      notifyDiscord(config.discordWebhookUrlResults, {
+        embeds: [{
+          title: `Application ${status}`,
+          description: `**${apps[idx].discordUsername}** has been **${status.toLowerCase()}** for the **${apps[idx].applicationType}** role.\n\n**Current Stats:**\n✅ Accepted: ${accepted}\n❌ Rejected: ${rejected}\n⏳ Pending: ${pending}`,
+          color: status === 'Accepted' ? 0x00ff00 : 0xff0000,
+        }]
+      });
     }
   },
-
-  deleteApplication: (id: string) => {
-    const apps = store.getApplications().filter(a => a.id !== id);
-    setItem(STORAGE_KEYS.applications, apps);
+  deleteApplication: async (id: string) => {
+    await deleteDoc(doc(db, "applications", id));
   },
-
-  clearResults: () => {
-    const apps = store.getApplications().filter(a => a.status === 'Pending');
-    setItem(STORAGE_KEYS.applications, apps);
-  },
-
-  findApplication: (query: string): Application | undefined => {
-    const apps = store.getApplications();
-    return apps.find(a => a.id === query || a.discordUsername.toLowerCase() === query.toLowerCase());
-  },
-
-  isAdminAuthenticated: (): boolean => {
-    return sessionStorage.getItem(STORAGE_KEYS.adminAuth) === 'true';
-  },
-  setAdminAuth: (val: boolean) => {
-    if (val) sessionStorage.setItem(STORAGE_KEYS.adminAuth, 'true');
-    else sessionStorage.removeItem(STORAGE_KEYS.adminAuth);
-  },
+  clearResults: async (apps: Application[]) => {
+    const toDelete = apps.filter(a => a.status !== 'Pending');
+    for (const app of toDelete) {
+      await deleteDoc(doc(db, "applications", app.id));
+    }
+  }
 };

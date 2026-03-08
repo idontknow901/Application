@@ -2,16 +2,14 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Send, Train, Sparkles } from "lucide-react";
-import { store, APPLICATION_TYPES, type ApplicationType } from "@/lib/store";
+import { store, useAppStore, APPLICATION_TYPES, type ApplicationType } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import TrainLoader from "@/components/TrainLoader";
 import { toast } from "sonner";
 
 const Apply = () => {
   const navigate = useNavigate();
-  const config = store.getConfig();
-  const questions = store.getQuestions();
-  const steps = store.getSteps();
+  const { config, questions, steps, loading } = useAppStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedAppType, setSelectedAppType] = useState<ApplicationType | "">("");
@@ -33,6 +31,16 @@ const Apply = () => {
   }, [questions, currentStep, selectedAppType, steps]);
 
   const maxStep = steps.length;
+
+  if (loading) {
+    return (
+      <PageWrapper>
+        <div className="container mx-auto px-4 flex items-center justify-center min-h-[60vh]">
+          <TrainLoader text="Loading form..." />
+        </div>
+      </PageWrapper>
+    );
+  }
 
   if (!config.recruitmentOpen) {
     return (
@@ -80,7 +88,7 @@ const Apply = () => {
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 2500));
 
-    const app = store.addApplication({
+    const app = await store.addApplication({
       discordUsername: answers["q1"] || "",
       discordUserId: answers["q2"] || "",
       applicationType: selectedAppType,

@@ -1,10 +1,13 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
-import { store } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 
 const Results = () => {
-  const apps = store.getApplications();
+  const { applications: apps, loading } = useAppStore();
+
+  if (loading) return null;
+
   const accepted = apps.filter((a) => a.status === "Accepted");
   const rejected = apps.filter((a) => a.status === "Rejected");
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Clock, CheckCircle2, XCircle, Inbox } from "lucide-react";
-import { store } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import TrainLoader from "@/components/TrainLoader";
 
@@ -12,6 +12,7 @@ const statusConfig = {
 };
 
 const Track = () => {
+  const { applications, loading } = useAppStore();
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<null | "not_found" | { status: string; id: string; username: string }>(null);
@@ -21,7 +22,8 @@ const Track = () => {
     setSearching(true);
     setResult(null);
     await new Promise((r) => setTimeout(r, 1500));
-    const app = store.findApplication(query.trim());
+    const lowerQ = query.trim().toLowerCase();
+    const app = applications.find(a => a.id.toLowerCase() === lowerQ || a.discordUsername.toLowerCase() === lowerQ);
     if (app) {
       setResult({ status: app.status, id: app.id, username: app.discordUsername });
     } else {
