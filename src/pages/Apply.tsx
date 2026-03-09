@@ -75,26 +75,31 @@ const Apply = () => {
     }
     if (!selectedAppType) {
       toast.error("Please select an application type.");
+      setSubmitting(false);
       return;
     }
 
-    setSubmitting(true);
+    try {
+      const app = await store.addApplication({
+        discordUsername: answers["q1"] || "",
+        discordUserId: answers["q2"] || "",
+        applicationType: selectedAppType as ApplicationType,
+        answers,
+      });
 
-    const app = await store.addApplication({
-      discordUsername: answers["q1"] || "",
-      discordUserId: answers["q2"] || "",
-      applicationType: selectedAppType,
-      answers,
-    });
+      // Save username for passed banner
+      if (answers["q1"]) {
+        localStorage.setItem("epic-rail-user-discord", answers["q1"]);
+      }
 
-    // Save username for passed banner
-    if (answers["q1"]) {
-      localStorage.setItem("epic-rail-user-discord", answers["q1"]);
+      toast.success(`Application submitted! Your ID: ${app.id}`);
+      navigate("/track");
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast.error("Failed to submit. Please check your connection.");
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
-    toast.success(`Application submitted! Your ID: ${app.id}`);
-    navigate("/track");
   };
 
   const canGoNext = (() => {
