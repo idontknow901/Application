@@ -6,13 +6,10 @@ import {
   Briefcase
 } from "lucide-react";
 import { store, useAppStore, APPLICATION_TYPES, type Application, type Question, type ApplicationType, type AppStep } from "@/lib/store";
-import { hashInput } from "@/lib/crypto";
 import PageWrapper from "@/components/PageWrapper";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
-// Secure Admin Password Hash (One-way)
-const ADMIN_PASSWORD_HASH = "d71bcee86f367f8519f264221674d1072ebb3f66777686030059d201946f7d11";
 
 const Admin = () => {
   const [authenticated, setAuthenticated] = useState(store.isAdminAuthenticated());
@@ -29,15 +26,27 @@ const Admin = () => {
   });
 
   const handleLogin = async () => {
-    if (!password.trim()) return;
-
-    const inputHash = await hashInput(password);
-    if (inputHash === ADMIN_PASSWORD_HASH) {
-      store.setAdminAuth(true);
-      setAuthenticated(true);
-      toast.success("Identity Verified", { description: "Full admin access granted." });
-    } else {
-      toast.error("Invalid administrator password");
+    if (!password.trim()) {
+      toast.error("Please enter a password");
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      if (res.ok) {
+        // Server sets HttpOnly cookie; also set client flag for UI
+        store.setAdminAuth(true);
+        setAuthenticated(true);
+        toast.success("Identity Verified", { description: "Full admin access granted." });
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Invalid administrator password");
+      }
+    } catch (e) {
+      toast.error("Login failed. Please try again.");
     }
   };
 
