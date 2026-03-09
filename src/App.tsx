@@ -12,6 +12,26 @@ import Track from "./pages/Track";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
+import { useLocation } from "react-router-dom";
+
+const AppContent = () => {
+  const location = useLocation();
+  return (
+    <>
+      <Navbar />
+      <PassedBanner />
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<Index />} />
+        <Route path="/apply" element={<Apply />} />
+        <Route path="/results" element={<Results />} />
+        <Route path="/track" element={<Track />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -20,16 +40,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Navbar />
-        <PassedBanner />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/apply" element={<Apply />} />
-          <Route path="/results" element={<Results />} />
-          <Route path="/track" element={<Track />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppContent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

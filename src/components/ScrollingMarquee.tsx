@@ -10,8 +10,8 @@ const ScrollingMarquee = () => {
 
   if (openTypes.length === 1) {
     return (
-      <div className="w-full py-3 border-y text-center" style={{ borderColor: "hsl(var(--gold) / 0.3)", background: "hsl(var(--navy) / 0.8)" }}>
-        <span className="text-sm font-semibold tracking-wider" style={{ color: "hsl(var(--gold-light))" }}>
+      <div className="w-full py-3 border-y text-center" style={{ borderColor: "hsl(var(--primary))", background: "hsl(var(--card))" }}>
+        <span className="text-sm font-semibold tracking-wider" style={{ color: "hsl(var(--primary))" }}>
           {text}
         </span>
       </div>
@@ -21,9 +21,9 @@ const ScrollingMarquee = () => {
   const repeated = `${text}   •   ${text}   •   ${text}   •   `;
 
   return (
-    <div className="w-full overflow-hidden py-3 border-y" style={{ borderColor: "hsl(var(--gold) / 0.3)", background: "hsl(var(--navy) / 0.8)" }}>
+    <div className="w-full overflow-hidden py-3 border-y" style={{ borderColor: "hsl(var(--primary))", background: "hsl(var(--card))" }}>
       <div className="animate-marquee whitespace-nowrap flex">
-        <span className="text-sm font-semibold tracking-wider" style={{ color: "hsl(var(--gold-light))" }}>
+        <span className="text-sm font-semibold tracking-wider" style={{ color: "hsl(var(--primary))" }}>
           {repeated}
         </span>
       </div>

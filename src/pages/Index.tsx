@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, Shield, Users, Clock, Train, Zap, Globe } from "lucide-react";
+import { ArrowRight, Shield, Users, Clock } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import ScrollingMarquee from "@/components/ScrollingMarquee";
 import PageWrapper from "@/components/PageWrapper";
@@ -9,164 +8,21 @@ import PageWrapper from "@/components/PageWrapper";
 const Index = () => {
   const { config } = useAppStore();
   const isOpen = config.recruitmentOpen;
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Animated particles following cursor
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    let mouse = { x: 0, y: 0 };
-    const particles: { x: number; y: number; vx: number; vy: number; life: number; size: number }[] = [];
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const handleMouse = (e: MouseEvent) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-      // Spawn particles on move
-      for (let i = 0; i < 2; i++) {
-        particles.push({
-          x: mouse.x,
-          y: mouse.y,
-          vx: (Math.random() - 0.5) * 3,
-          vy: (Math.random() - 0.5) * 3,
-          life: 1,
-          size: Math.random() * 3 + 1,
-        });
-      }
-    };
-    window.addEventListener("mousemove", handleMouse);
-
-    // Background floating dots
-    const bgDots: { x: number; y: number; vx: number; vy: number; size: number }[] = [];
-    for (let i = 0; i < 60; i++) {
-      bgDots.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        size: Math.random() * 2 + 0.5,
-      });
-    }
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw bg dots
-      bgDots.forEach((d) => {
-        d.x += d.vx;
-        d.y += d.vy;
-        if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
-        if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
-
-        // Connect dots near cursor
-        const dist = Math.hypot(d.x - mouse.x, d.y - mouse.y);
-        if (dist < 200) {
-          ctx.beginPath();
-          ctx.moveTo(d.x, d.y);
-          ctx.lineTo(mouse.x, mouse.y);
-          ctx.strokeStyle = `hsla(38, 92%, 50%, ${0.15 * (1 - dist / 200)})`;
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
-        }
-
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(38, 92%, 60%, ${0.3 + (dist < 200 ? 0.4 * (1 - dist / 200) : 0)})`;
-        ctx.fill();
-      });
-
-      // Draw cursor particles
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.02;
-        if (p.life <= 0) {
-          particles.splice(i, 1);
-          continue;
-        }
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(38, 92%, 60%, ${p.life * 0.6})`;
-        ctx.fill();
-      }
-
-      // Cursor glow
-      const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 150);
-      gradient.addColorStop(0, "hsla(38, 92%, 50%, 0.08)");
-      gradient.addColorStop(1, "transparent");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(mouse.x - 150, mouse.y - 150, 300, 300);
-
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", handleMouse);
-    };
-  }, []);
 
   return (
     <PageWrapper>
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Animated Canvas Background */}
-        <canvas ref={canvasRef} className="absolute inset-0 z-0" />
-        <div className="absolute inset-0 bg-gradient-to-b from-navy via-navy/90 to-background z-[1]" />
-
-        {/* Animated geometric shapes */}
-        <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none">
-          {[...Array(5)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full border"
-              style={{
-                borderColor: "hsl(var(--gold) / 0.1)",
-                width: 100 + i * 80,
-                height: 100 + i * 80,
-                left: `${20 + i * 12}%`,
-                top: `${10 + i * 15}%`,
-              }}
-              animate={{
-                rotate: [0, 360],
-                scale: [1, 1.1, 1],
-              }}
-              transition={{
-                duration: 15 + i * 5,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-            />
-          ))}
-        </div>
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-background">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0F1115] via-[#161920] to-background z-[1]" />
 
         {/* Content */}
-        <div className="relative z-10 container mx-auto px-4 text-center">
+        <div className="relative z-10 container mx-auto px-4 text-center max-w-full overflow-hidden">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
           >
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Train className="w-16 h-16 mx-auto mb-6" style={{ color: "hsl(var(--gold))" }} />
-            </motion.div>
-            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-black mb-6 text-gradient-gold drop-shadow-lg">
+            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-6 text-primary drop-shadow-lg">
               Epic Rail of India
             </h1>
           </motion.div>
@@ -175,8 +31,7 @@ const Index = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="text-lg md:text-xl max-w-2xl mx-auto mb-8"
-            style={{ color: "hsl(var(--gold-light) / 0.9)" }}
+            className="text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-8 text-primary/80 px-2"
           >
             Join India's most immersive railway simulation community on Discord.
             Experience the thrill of the rails like never before.
@@ -187,16 +42,16 @@ const Index = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.5 }}
-            className="mb-10"
+            className="mb-10 w-full"
           >
             <div
-              className={`inline-flex items-center gap-3 px-6 py-3 rounded-full text-lg font-bold ${isOpen
-                ? "gradient-gold text-primary-foreground animate-pulse-glow"
-                : "bg-crimson/20 border border-crimson/50 text-crimson"
+              className={`inline-flex items-center gap-3 px-6 py-3 rounded-full text-base sm:text-lg font-bold border transition-shadow ${isOpen
+                ? "bg-primary border-primary text-white shadow-[0_0_20px_rgba(255,77,77,0.3)] hover:shadow-[0_0_40px_rgba(255,77,77,0.6)]"
+                : "bg-red-500/20 border-red-500/50 text-red-500"
                 }`}
             >
               <span
-                className={`w-3 h-3 rounded-full ${isOpen ? "bg-emerald animate-pulse" : "bg-crimson"
+                className={`w-3 h-3 rounded-full ${isOpen ? "bg-white animate-pulse" : "bg-red-500"
                   }`}
               />
               Recruitment: {isOpen ? "OPEN" : "CLOSED"}
@@ -207,43 +62,40 @@ const Index = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7, duration: 0.5 }}
+            className="w-full flex justify-center"
           >
             {isOpen ? (
               <Link
                 to="/apply"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl gradient-gold font-bold text-lg hover:scale-105 transition-transform shadow-xl"
-                style={{ color: "hsl(var(--navy))" }}
+                className="inline-flex w-[90%] sm:w-auto justify-center items-center gap-2 px-8 py-4 rounded-md bg-white border border-[#1e232b] text-background hover:bg-gray-200 transition-all font-bold text-lg uppercase shadow-xl"
               >
                 Begin Application <ArrowRight className="w-5 h-5" />
               </Link>
             ) : (
-              <p className="text-gold-light/70 text-lg glass-card inline-block px-8 py-4">
+              <p className="text-primary/70 text-base sm:text-lg bg-[#161920] border border-[#1e232b] rounded-md inline-block px-8 py-4">
                 ⏸ Applications are currently paused. Check back soon!
               </p>
             )}
           </motion.div>
         </div>
-
-        {/* Animated train track at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 z-10">
-          <div className="train-track w-full" />
-        </div>
       </section>
 
       {/* Scrolling Marquee */}
-      <ScrollingMarquee />
+      <div className="overflow-hidden w-full bg-[#161920]">
+        <ScrollingMarquee />
+      </div>
 
       {/* Features */}
-      <section className="container mx-auto px-4 py-20">
+      <section className="container mx-auto px-4 py-16 sm:py-20 overflow-hidden w-full">
         <motion.h2
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           className="font-display text-3xl md:text-4xl font-bold text-center mb-16"
         >
-          Why Join <span className="text-gradient-gold">Epic Rail?</span>
+          Why Join <span className="text-primary">Epic Rail?</span>
         </motion.h2>
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {[
             {
               icon: Users,
@@ -267,16 +119,15 @@ const Index = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.5 }}
-              className="glass-card p-8 text-center hover:scale-[1.02] transition-transform group"
-              style={{ background: "hsl(var(--navy) / 0.6)" }}
+              className="bg-[#161920] border border-[#1e232b] rounded-md p-6 sm:p-8 text-center hover:border-primary transition-colors group"
             >
-              <div className="w-14 h-14 rounded-xl mx-auto mb-4 flex items-center justify-center gradient-gold group-hover:scale-110 transition-transform">
-                <feature.icon className="w-7 h-7" style={{ color: "hsl(var(--navy))" }} />
+              <div className="w-14 h-14 rounded-md mx-auto mb-4 flex items-center justify-center bg-[#0F1115] border border-[#1e232b] group-hover:bg-primary/20 transition-colors">
+                <feature.icon className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="font-display text-xl font-bold mb-3 text-gold-light">
+              <h3 className="font-display text-xl font-bold mb-3 text-white">
                 {feature.title}
               </h3>
-              <p className="text-foreground/70">{feature.desc}</p>
+              <p className="text-muted-foreground text-sm sm:text-base">{feature.desc}</p>
             </motion.div>
           ))}
         </div>

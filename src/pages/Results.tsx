@@ -17,7 +17,7 @@ const Results = () => {
         <motion.h1
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="font-display text-4xl font-bold text-center mb-12 text-gradient-gold"
+          className="font-display text-4xl font-bold text-center mb-12 text-primary"
         >
           Application Results
         </motion.h1>
@@ -28,12 +28,11 @@ const Results = () => {
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass-card p-6 border-emerald/30"
-            style={{ background: "hsl(var(--emerald) / 0.08)" }}
+            className="glass-card p-6 border-[#1E232B] bg-[#161920]"
           >
             <div className="flex items-center gap-3 mb-6">
-              <CheckCircle2 className="w-7 h-7 text-emerald" />
-              <h2 className="font-display text-2xl font-bold text-emerald">
+              <CheckCircle2 className="w-7 h-7 text-green-500" />
+              <h2 className="font-display text-2xl font-bold text-green-500">
                 Successful Candidates
               </h2>
             </div>
@@ -49,17 +48,17 @@ const Results = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 * i }}
-                    className="flex items-center justify-between rounded-lg bg-emerald/10 px-4 py-3"
+                    className="flex items-center justify-between rounded-lg bg-green-500/10 px-4 py-3"
                   >
                     <div>
                       <p className="font-semibold text-foreground">
                         {a.discordUsername}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {a.answers["q5"] || "General"}
+                        {a.answers?.["q5"] || a.applicationType || "General"}
                       </p>
                     </div>
-                    <span className="text-xs font-mono text-emerald">{a.id}</span>
+                    <span className="text-xs font-mono text-green-500">{a.id}</span>
                   </motion.div>
                 ))}
               </div>
@@ -71,12 +70,11 @@ const Results = () => {
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
-            className="glass-card p-6 border-crimson/30"
-            style={{ background: "hsl(var(--crimson) / 0.06)" }}
+            className="glass-card p-6 border-[#1E232B] bg-[#161920]"
           >
             <div className="flex items-center gap-3 mb-6">
-              <XCircle className="w-7 h-7 text-crimson" />
-              <h2 className="font-display text-2xl font-bold text-crimson">
+              <XCircle className="w-7 h-7 text-red-500" />
+              <h2 className="font-display text-2xl font-bold text-red-500">
                 Recent Reviews
               </h2>
             </div>
@@ -92,12 +90,12 @@ const Results = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 * i }}
-                    className="flex items-center justify-between rounded-lg bg-crimson/10 px-4 py-3"
+                    className="flex items-center justify-between rounded-lg bg-red-500/10 px-4 py-3"
                   >
                     <p className="font-semibold text-foreground">
                       {a.discordUsername}
                     </p>
-                    <span className="text-xs font-mono text-crimson">{a.id}</span>
+                    <span className="text-xs font-mono text-red-500">{a.id}</span>
                   </motion.div>
                 ))}
               </div>

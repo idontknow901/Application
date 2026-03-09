@@ -6,9 +6,9 @@ import PageWrapper from "@/components/PageWrapper";
 import TrainLoader from "@/components/TrainLoader";
 
 const statusConfig = {
-  Pending: { icon: Clock, color: "text-gold", bg: "bg-gold/10", label: "Application Received — Under Review" },
-  Accepted: { icon: CheckCircle2, color: "text-emerald", bg: "bg-emerald/10", label: "Congratulations! You've been Accepted 🎉" },
-  Rejected: { icon: XCircle, color: "text-crimson", bg: "bg-crimson/10", label: "Thank you for applying. Unfortunately, your application was not successful." },
+  Pending: { icon: Clock, color: "text-primary", bg: "bg-primary/10", label: "Application Received — Under Review" },
+  Accepted: { icon: CheckCircle2, color: "text-green-500", bg: "bg-green-500/10", label: "Congratulations! You've been Accepted 🎉" },
+  Rejected: { icon: XCircle, color: "text-red-500", bg: "bg-red-500/10", label: "Thank you for applying. Unfortunately, your application was not successful." },
 };
 
 const Track = () => {
@@ -38,7 +38,7 @@ const Track = () => {
         <motion.h1
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="font-display text-4xl font-bold text-center mb-3 text-gradient-gold"
+          className="font-display text-4xl font-bold text-center mb-3 text-primary"
         >
           Track Your Application
         </motion.h1>
@@ -51,7 +51,7 @@ const Track = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="glass-card p-8"
-          style={{ background: "hsl(var(--navy) / 0.7)" }}
+          style={{ background: "hsl(var(--card))" }}
         >
           <div className="flex gap-3">
             <input
@@ -60,12 +60,12 @@ const Track = () => {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="APP-XXXXXX or username"
-              className="flex-1 rounded-lg border border-border/30 bg-background/10 px-4 py-3 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-gold/50 backdrop-blur-sm"
+              className="flex-1 rounded-lg border border-border/30 bg-background/10 px-4 py-3 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-sm"
             />
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="px-5 py-3 rounded-lg gradient-gold text-primary-foreground font-semibold hover:scale-105 transition-transform disabled:opacity-50"
+              className="px-5 py-3 rounded-lg bg-primary text-white font-bold uppercase hover:brightness-110 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center"
             >
               <Search className="w-5 h-5" />
             </button>

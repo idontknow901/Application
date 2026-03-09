@@ -3,14 +3,18 @@ import { db } from "./firebase";
 import { doc, collection, onSnapshot, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 
 export type ApplicationType =
-  | 'Railway Police Force [Mod]'
-  | 'Railway Promotion Board [Public Relation Department]'
-  | 'Safety Department [Testing]';
+  | 'Driver'
+  | 'Guard'
+  | 'Dispatcher'
+  | 'Station Master'
+  | 'Signaller';
 
 export const APPLICATION_TYPES: ApplicationType[] = [
-  'Railway Police Force [Mod]',
-  'Railway Promotion Board [Public Relation Department]',
-  'Safety Department [Testing]'
+  'Driver',
+  'Guard',
+  'Dispatcher',
+  'Station Master',
+  'Signaller'
 ];
 
 export interface AppStep {
@@ -51,11 +55,7 @@ export const DEFAULT_STEPS: AppStep[] = [
   { id: 1, name: "Discord Info & Role", description: "Basic details about you" },
   { id: 2, name: "Questions", description: "Role-specific and general questions" },
 ];
-export const DEFAULT_QUESTIONS: Question[] = [
-  { id: 'q1', step: 1, label: 'What is your Discord Username?', type: 'text', required: true, appType: 'General' },
-  { id: 'q2', step: 1, label: 'What is your Discord User ID?', type: 'text', required: true, appType: 'General' },
-  { id: 'q-reason', step: 2, label: 'Why do you want to join this department?', type: 'textarea', required: true, appType: 'General' },
-];
+export const DEFAULT_QUESTIONS: Question[] = [];
 
 export const DEFAULT_CONFIG: AppConfig = {
   recruitmentOpen: true,
