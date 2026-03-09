@@ -3,6 +3,9 @@ import { Search, Clock, CheckCircle2, XCircle, Inbox } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import TrainLoader from "@/components/TrainLoader";
+import { db } from "@/lib/firebase";
+import { collection, query as fsQuery, where, getDocs } from "firebase/firestore";
+import { toast } from "sonner";
 
 const statusConfig = {
   Pending: { icon: Clock, color: "text-primary", bg: "bg-primary/10", label: "Application Received — Under Review" },
@@ -20,12 +23,33 @@ const Track = () => {
     if (!query.trim()) return;
     setSearching(true);
     setResult(null);
-    await new Promise((r) => setTimeout(r, 1500));
-    const lowerQ = query.trim().toLowerCase();
-    const app = applications.find(a => a.id.toLowerCase() === lowerQ || a.discordUsername.toLowerCase() === lowerQ);
-    if (app) {
-      setResult({ status: app.status, id: app.id, username: app.discordUsername });
-    } else {
+
+    try {
+      const searchKey = query.trim();
+      const appRef = collection(db, "applications");
+
+      // 1. Try search by ID (Exact uppercase)
+      const qById = fsQuery(appRef, where("id", "==", searchKey.toUpperCase()));
+      const snapById = await getDocs(qById);
+
+      if (!snapById.empty) {
+        const app = snapById.docs[0].data();
+        setResult({ status: app.status, id: app.id, username: app.discordUsername });
+      } else {
+        // 2. Try search by Username (This is exact match)
+        const qByUsr = fsQuery(appRef, where("discordUsername", "==", searchKey));
+        const snapByUsr = await getDocs(qByUsr);
+
+        if (!snapByUsr.empty) {
+          const app = snapByUsr.docs[0].data();
+          setResult({ status: app.status, id: app.id, username: app.discordUsername });
+        } else {
+          setResult("not_found");
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Database query failed");
       setResult("not_found");
     }
     setSearching(false);
