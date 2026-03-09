@@ -27,7 +27,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let finalUrl = url;
         let method = 'POST';
 
-        // Support for updating existing messages (PATCH) if messageId is provided
         if (type === 'open' && messageId) {
             finalUrl = `${url}/messages/${messageId}`;
             method = 'PATCH';
@@ -43,11 +42,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!response.ok) {
             const errText = await response.text();
-            throw new Error(`Discord API error: ${response.status} ${errText}`);
+            console.error(`Discord API Error [${response.status}]:`, errText);
+            res.status(response.status).json({ error: errText });
+            return;
         }
 
-        const data = await response.json();
-        res.status(200).json(data);
+        // Handle possible empty or non-JSON responses
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            res.status(200).json(data);
+        } else {
+            res.status(200).json({ success: true });
+        }
     } catch (error: any) {
         console.error('Webhook proxy error:', error);
         res.status(500).json({ error: error.message });

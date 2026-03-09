@@ -74,7 +74,9 @@ export const notifyDiscord = async (type: 'open' | 'results', payload: any, mess
 
     if (res.ok && type === 'open' && !messageId && onNewMessageId) {
       const data = await res.json();
-      if (data.id) onNewMessageId(data.id);
+      if (data && data.id) {
+        onNewMessageId(data.id);
+      }
     }
   } catch (error) {
     console.error("Failed to trigger secure notification", error);

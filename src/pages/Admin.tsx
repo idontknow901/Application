@@ -43,39 +43,46 @@ const Admin = () => {
     }
   };
 
-  const toggleRecruitment = () => {
-    const isOpening = !config.recruitmentOpen;
-    const next = { ...config, recruitmentOpen: isOpening };
-    store.setConfig(next);
-    toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
+  const syncDiscordStatus = async (updatedConfig: typeof config) => {
+    const isGlobalOpen = updatedConfig.recruitmentOpen;
+    const openTypes = updatedConfig.openApplicationTypes || [];
+    const messageId = updatedConfig.discordWebhookMessageIdOpen;
 
-    // Format description with colored circles and bold status
     const statusText = APPLICATION_TYPES.map(type => {
-      const isOpen = isOpening && (next.openApplicationTypes || []).includes(type);
+      const isOpen = isGlobalOpen && openTypes.includes(type);
       const circle = isOpen ? "🟢" : "🔴";
       const status = isOpen ? "**OPEN**" : "**CLOSED**";
       return `•  ${circle} **${type}**\n      •  Status: ${status}`;
     }).join('\n\n');
 
-    // Notify Discord securely through proxy
-    notifyDiscord('open', {
+    const payload = {
       embeds: [{
         title: "📢 Official Recruitment Status: EROI",
         description: `**Epic Rails of India | Recruitment Hub**\n\n**📋 Current Vacancies**\n\n${statusText}`,
-        color: isOpening ? 0x00ff00 : 0xff0000,
+        color: isGlobalOpen ? 0x00ff00 : 0xff0000,
         image: {
-          url: config.statusImageUrl || "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
+          url: updatedConfig.statusImageUrl || "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
         },
         timestamp: new Date().toISOString(),
         footer: { text: "EROI Recruitment Management System" }
       }]
-    }, config.discordWebhookMessageIdOpen, (id) => {
-      // Save the message ID so future updates use the same message
-      store.setConfig({ ...next, discordWebhookMessageIdOpen: id });
+    };
+
+    await notifyDiscord('open', payload, messageId, async (id) => {
+      // If we got a new ID, save it to the database immediately
+      await store.setConfig({ ...updatedConfig, discordWebhookMessageIdOpen: id });
     });
   };
 
-  const toggleAppType = (type: ApplicationType) => {
+  const toggleRecruitment = async () => {
+    const isOpening = !config.recruitmentOpen;
+    const next = { ...config, recruitmentOpen: isOpening };
+    await store.setConfig(next);
+    toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
+    syncDiscordStatus(next);
+  };
+
+  const toggleAppType = async (type: ApplicationType) => {
     const currentList = config.openApplicationTypes || [...APPLICATION_TYPES];
     const isOpening = !currentList.includes(type);
     const nextList = isOpening
@@ -83,61 +90,16 @@ const Admin = () => {
       : currentList.filter((t) => t !== type);
 
     const updated = { ...config, openApplicationTypes: nextList };
-    store.setConfig(updated);
+    await store.setConfig(updated);
     toast.success(`${type} applications ${isOpening ? "opened" : "closed"}`);
-
-    // Update the single persistent Discord message
-    if (config.discordWebhookMessageIdOpen) {
-      const isGlobalOpen = config.recruitmentOpen;
-      const statusText = APPLICATION_TYPES.map(t => {
-        const isOpen = isGlobalOpen && nextList.includes(t);
-        const circle = isOpen ? "🟢" : "🔴";
-        const status = isOpen ? "**OPEN**" : "**CLOSED**";
-        return `•  ${circle} **${t}**\n      •  Status: ${status}`;
-      }).join('\n\n');
-
-      notifyDiscord('open', {
-        embeds: [{
-          title: "📢 Official Recruitment Status: EROI",
-          description: `**Epic Rails of India | Recruitment Hub**\n\n**📋 Current Vacancies**\n\n${statusText}`,
-          color: isGlobalOpen ? 0x00ff00 : 0xff0000,
-          image: {
-            url: config.statusImageUrl || "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
-          },
-          timestamp: new Date().toISOString(),
-          footer: { text: "EROI Recruitment Management System" }
-        }]
-      }, config.discordWebhookMessageIdOpen);
-    }
+    syncDiscordStatus(updated);
   };
 
-  const updateStatusImage = (url: string) => {
+  const updateStatusImage = async (url: string) => {
     const updated = { ...config, statusImageUrl: url };
-    store.setConfig(updated);
+    await store.setConfig(updated);
     toast.success("Status embed image updated");
-
-    // Immediately update Discord message if possible
-    if (config.discordWebhookMessageIdOpen) {
-      const openTypes = config.openApplicationTypes || [];
-      const isGlobalOpen = config.recruitmentOpen;
-      const statusText = APPLICATION_TYPES.map(t => {
-        const isOpen = isGlobalOpen && openTypes.includes(t);
-        const circle = isOpen ? "🟢" : "🔴";
-        const status = isOpen ? "**OPEN**" : "**CLOSED**";
-        return `•  ${circle} **${t}**\n      •  Status: ${status}`;
-      }).join('\n\n');
-
-      notifyDiscord('open', {
-        embeds: [{
-          title: "📢 Official Recruitment Status: EROI",
-          description: `**Epic Rails of India | Recruitment Hub**\n\n**📋 Current Vacancies**\n\n${statusText}`,
-          color: isGlobalOpen ? 0x00ff00 : 0xff0000,
-          image: { url: url },
-          timestamp: new Date().toISOString(),
-          footer: { text: "EROI Recruitment Management System" }
-        }]
-      }, config.discordWebhookMessageIdOpen);
-    }
+    syncDiscordStatus(updated);
   };
 
   const handleStatus = async (id: string, status: "Accepted" | "Rejected") => {
