@@ -49,12 +49,21 @@ const Admin = () => {
     store.setConfig(next);
     toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
 
+    const openTypes = next.openApplicationTypes || [];
+
+    // Format the status message as requested
+    const rpfStatus = openTypes.includes('Railway Police Force [Mod]') ? "**Open**" : "Close";
+    const rpbStatus = openTypes.includes('Railway Promotion Board [Public Relation Department]') ? "**Open**" : "Close";
+
     // Notify Discord securely through proxy
     notifyDiscord('open', {
       embeds: [{
         title: "Recruitment Status Updated",
-        description: `Applications are now **${isOpening ? "OPEN" : "CLOSED"}**!`,
+        description: `Mod: ${rpfStatus}\nprd: ${rpbStatus}`,
         color: isOpening ? 0x00ff00 : 0xff0000,
+        image: {
+          url: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
+        },
         timestamp: new Date().toISOString()
       }]
     }, config.discordWebhookMessageIdOpen, (id) => {
@@ -71,6 +80,24 @@ const Admin = () => {
     const updated = { ...config, openApplicationTypes: next };
     store.setConfig(updated);
     toast.success(`${type} applications ${isOpening ? "opened" : "closed"}`);
+
+    // Also update Discord message if recruitment is globally open
+    if (config.recruitmentOpen) {
+      const rpfStatus = next.includes('Railway Police Force [Mod]') ? "**Open**" : "Close";
+      const rpbStatus = next.includes('Railway Promotion Board [Public Relation Department]') ? "**Open**" : "Close";
+
+      notifyDiscord('open', {
+        embeds: [{
+          title: "Recruitment Status Updated",
+          description: `Mod: ${rpfStatus}\nprd: ${rpbStatus}`,
+          color: 0x00ff00,
+          image: {
+            url: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
+          },
+          timestamp: new Date().toISOString()
+        }]
+      }, config.discordWebhookMessageIdOpen);
+    }
   };
 
   const handleStatus = async (id: string, status: "Accepted" | "Rejected") => {
