@@ -79,7 +79,7 @@ export const notifyDiscord = async (type: 'open' | 'results', payload: any, mess
   }
 };
 
-export function useAppStore() {
+export function useAppStore(isAdmin = false) {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [steps, setSteps] = useState<AppStep[]>(DEFAULT_STEPS);
   const [questions, setQuestions] = useState<Question[]>(DEFAULT_QUESTIONS);
@@ -88,9 +88,10 @@ export function useAppStore() {
 
   useEffect(() => {
     let componentsLoaded = 0;
+    const target = isAdmin ? 4 : 3;
     const checkDone = () => {
       componentsLoaded++;
-      if (componentsLoaded >= 4) {
+      if (componentsLoaded >= target) {
         setLoading(false);
       }
     };
@@ -119,15 +120,18 @@ export function useAppStore() {
       checkDone();
     });
 
-    const unsubApps = onSnapshot(collection(db, "applications"), (snap) => {
-      const apps: Application[] = [];
-      snap.forEach(d => apps.push(d.data() as Application));
-      setApplications(apps);
-      checkDone();
-    });
+    let unsubApps = () => { };
+    if (isAdmin) {
+      unsubApps = onSnapshot(collection(db, "applications"), (snap) => {
+        const apps: Application[] = [];
+        snap.forEach(d => apps.push(d.data() as Application));
+        setApplications(apps);
+        checkDone();
+      });
+    }
 
     return () => { unsubConfig(); unsubSteps(); unsubQ(); unsubApps(); };
-  }, []);
+  }, [isAdmin]);
 
   return { config, steps, questions, applications, loading };
 }

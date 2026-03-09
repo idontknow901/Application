@@ -89,7 +89,6 @@ const Apply = () => {
     }
 
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 2000));
 
     const app = await store.addApplication({
       discordUsername: answers["q1"] || "",

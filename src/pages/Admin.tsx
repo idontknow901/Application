@@ -16,7 +16,7 @@ const Admin = () => {
   const [selectedAppType, setSelectedAppType] = useState<string | null>(null);
   const [reviewFilter, setReviewFilter] = useState<string>("All");
 
-  const { config, applications, questions, steps, loading } = useAppStore();
+  const { config, applications, questions, steps, loading } = useAppStore(true);
 
   const [newStep, setNewStep] = useState({ name: "", description: "" });
   const [newQ, setNewQ] = useState<{ label: string; step: number; type: 'text' | 'textarea' | 'select' | 'boolean' }>({

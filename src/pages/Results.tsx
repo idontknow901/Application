@@ -3,7 +3,7 @@ import { useAppStore } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 
 const Results = () => {
-  const { applications: apps, loading } = useAppStore();
+  const { applications: apps, loading, config } = useAppStore(true);
 
   if (loading) return null;
 

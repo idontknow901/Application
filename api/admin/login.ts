@@ -20,16 +20,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
-    if (!ADMIN_PASSWORD_HASH) {
-        console.error('❌ ADMIN_PASSWORD_HASH is missing from environment variables!');
+    const trimmedHash = ADMIN_PASSWORD_HASH.trim();
+    if (!trimmedHash) {
+        console.error('❌ ADMIN_PASSWORD_HASH is missing or empty!');
         res.status(500).json({ error: 'Admin password not configured on server' });
         return;
     }
 
-    const isMatch = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    // Trim input password to handle accidental spaces
+    const isMatch = await bcrypt.compare(password.trim(), trimmedHash);
 
     if (!isMatch) {
-        console.warn('⚠️ Login attempt failed: password does not match hash');
+        console.warn(`⚠️ Login attempt failed. Hash in ENVs starts with: ${trimmedHash.substring(0, 10)}...`);
         res.status(401).json({ error: 'Invalid administrator password' });
         return;
     }
