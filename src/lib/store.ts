@@ -45,6 +45,7 @@ export interface AppConfig {
   discordWebhookUrlResults?: string;
   discordWebhookUrlOpen?: string;
   discordWebhookMessageIdOpen?: string;
+  statusImageUrl?: string;
 }
 
 export const DEFAULT_STEPS: AppStep[] = [
@@ -60,6 +61,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   discordWebhookUrlResults: "",
   discordWebhookUrlOpen: "",
   discordWebhookMessageIdOpen: "",
+  statusImageUrl: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg",
 };
 
 export const notifyDiscord = async (type: 'open' | 'results', payload: any, messageId?: string, onNewMessageId?: (id: string) => void) => {

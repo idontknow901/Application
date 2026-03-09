@@ -51,18 +51,20 @@ const Admin = () => {
 
     const openTypes = next.openApplicationTypes || [];
 
-    // Format the status message as requested
-    const rpfStatus = openTypes.includes('Railway Police Force [Mod]') ? "**Open**" : "Close";
-    const rpbStatus = openTypes.includes('Railway Promotion Board [Public Relation Department]') ? "**Open**" : "Close";
+    // Format the status message for all application types
+    const statusText = APPLICATION_TYPES.map(type => {
+      const isOpen = isOpening && openTypes.includes(type);
+      return `${type}: ${isOpen ? "**Open**" : "Close"}`;
+    }).join('\n');
 
     // Notify Discord securely through proxy
     notifyDiscord('open', {
       embeds: [{
-        title: "Recruitment Status Updated",
-        description: `Mod: ${rpfStatus}\nprd: ${rpbStatus}`,
+        title: "Official Recruitment Status",
+        description: statusText,
         color: isOpening ? 0x00ff00 : 0xff0000,
         image: {
-          url: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
+          url: config.statusImageUrl || "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
         },
         timestamp: new Date().toISOString()
       }]
@@ -74,26 +76,53 @@ const Admin = () => {
   const toggleAppType = (type: ApplicationType) => {
     const current = config.openApplicationTypes || [...APPLICATION_TYPES];
     const isOpening = !current.includes(type);
-    const next = isOpening
+    const nextList = isOpening
       ? [...current, type]
       : current.filter((t) => t !== type);
-    const updated = { ...config, openApplicationTypes: next };
+    const updated = { ...config, openApplicationTypes: nextList };
     store.setConfig(updated);
     toast.success(`${type} applications ${isOpening ? "opened" : "closed"}`);
 
-    // Also update Discord message if recruitment is globally open
+    // Update the single persistent Discord message if recruitment is globally open
     if (config.recruitmentOpen) {
-      const rpfStatus = next.includes('Railway Police Force [Mod]') ? "**Open**" : "Close";
-      const rpbStatus = next.includes('Railway Promotion Board [Public Relation Department]') ? "**Open**" : "Close";
+      const statusText = APPLICATION_TYPES.map(t => {
+        const isOpen = nextList.includes(t);
+        return `${t}: ${isOpen ? "**Open**" : "Close"}`;
+      }).join('\n');
 
       notifyDiscord('open', {
         embeds: [{
-          title: "Recruitment Status Updated",
-          description: `Mod: ${rpfStatus}\nprd: ${rpbStatus}`,
+          title: "Official Recruitment Status",
+          description: statusText,
           color: 0x00ff00,
           image: {
-            url: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
+            url: config.statusImageUrl || "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg"
           },
+          timestamp: new Date().toISOString()
+        }]
+      }, config.discordWebhookMessageIdOpen);
+    }
+  };
+
+  const updateStatusImage = (url: string) => {
+    const updated = { ...config, statusImageUrl: url };
+    store.setConfig(updated);
+    toast.success("Status embed image updated");
+
+    // Immediately update Discord message if possible
+    if (config.discordWebhookMessageIdOpen) {
+      const openTypes = config.openApplicationTypes || [];
+      const statusText = APPLICATION_TYPES.map(t => {
+        const isOpen = config.recruitmentOpen && openTypes.includes(t);
+        return `${t}: ${isOpen ? "**Open**" : "Close"}`;
+      }).join('\n');
+
+      notifyDiscord('open', {
+        embeds: [{
+          title: "Official Recruitment Status",
+          description: statusText,
+          color: config.recruitmentOpen ? 0x00ff00 : 0xff0000,
+          image: { url: url },
           timestamp: new Date().toISOString()
         }]
       }, config.discordWebhookMessageIdOpen);
@@ -319,6 +348,20 @@ const Admin = () => {
                   They are hidden from the public and cannot be intercepted.
                 </p>
                 <div className="space-y-6">
+                  <div className="p-4 rounded-xl bg-background/50 border border-border/30">
+                    <label className="text-base font-bold text-primary block mb-2">Status Embed Image URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        defaultValue={config.statusImageUrl}
+                        onBlur={(e) => updateStatusImage(e.target.value)}
+                        placeholder="Paste image URL (Discord, Imgur, etc.)"
+                        className="flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2 italic">Changes are applied immediately to the persistent Discord message.</p>
+                  </div>
+
                   <div className="p-4 rounded-xl bg-background/50 border border-border/30">
                     <div className="flex justify-between items-center">
                       <div>
