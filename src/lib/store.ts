@@ -160,9 +160,11 @@ export function useAppStore() {
 
 export const store = {
   isAdminAuthenticated: (): boolean => {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return false;
     return sessionStorage.getItem('epic-rail-admin-auth') === 'true';
   },
   setAdminAuth: (val: boolean) => {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
     if (val) sessionStorage.setItem('epic-rail-admin-auth', 'true');
     else sessionStorage.removeItem('epic-rail-admin-auth');
   },
