@@ -255,17 +255,33 @@ const Admin = () => {
               </div>
 
               <div className="glass-card p-6 sm:p-8" style={{ background: "hsl(var(--card) / 0.8)" }}>
-                <h2 className="font-display text-xl font-bold text-primary mb-4">Clear Results</h2>
-                <p className="text-sm text-muted-foreground mb-4">Remove all accepted and rejected applications from the results page</p>
-                <button
-                  onClick={async () => {
-                    await store.clearResults(applications);
-                    toast.success("Results cleared — only pending applications remain");
-                  }}
-                  className="flex items-center gap-2 px-5 py-3 botghost-btn !text-red-400 !border-red-500/30 w-full sm:w-auto justify-center"
-                >
-                  <Trash2 className="w-5 h-5 shrink-0" /> Clear All Results
-                </button>
+                <h2 className="font-display text-xl font-bold text-primary mb-4">Database Maintenance</h2>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-4">Clear all accepted and rejected applications from the results page.</p>
+                    <button
+                      onClick={async () => {
+                        await store.clearResults(applications);
+                        toast.success("Results cleared — only pending applications remain");
+                      }}
+                      className="flex items-center gap-2 px-5 py-3 botghost-btn !text-red-400 !border-red-500/30 w-full sm:w-auto justify-center"
+                    >
+                      <Trash2 className="w-5 h-5 shrink-0" /> Clear All Results
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-4">Push default configuration, steps, and questions to the database.</p>
+                    <button
+                      onClick={async () => {
+                        await store.syncSettings();
+                        toast.success("Settings synchronized with database");
+                      }}
+                      className="flex items-center gap-2 px-5 py-3 botghost-btn !text-emerald-400 !border-emerald-500/30 w-full sm:w-auto justify-center"
+                    >
+                      <RotateCcw className="w-5 h-5 shrink-0" /> Sync Database
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Webhook Configuration - Secure Mode */}

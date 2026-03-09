@@ -181,5 +181,10 @@ export const store = {
     for (const app of toDelete) {
       await deleteDoc(doc(db, "applications", app.id));
     }
+  },
+  syncSettings: async () => {
+    await setDoc(doc(db, "settings", "config"), DEFAULT_CONFIG);
+    await setDoc(doc(db, "settings", "steps"), { items: DEFAULT_STEPS });
+    await setDoc(doc(db, "settings", "questions"), { items: DEFAULT_QUESTIONS });
   }
 };
