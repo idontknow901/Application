@@ -62,46 +62,20 @@ export const DEFAULT_CONFIG: AppConfig = {
   discordWebhookMessageIdOpen: "",
 };
 
-export const notifyDiscord = async (url: string, payload: any) => {
-  if (!url) return;
+export const notifyDiscord = async (type: 'open' | 'results', payload: any, messageId?: string, onNewMessageId?: (id: string) => void) => {
   try {
-    await fetch(url, {
+    const res = await fetch("/api/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ type, payload, messageId }),
     });
-  } catch (error) {
-    console.error("Failed to trigger webhook", error);
-  }
-};
 
-export const notifyDiscordOpenStatus = async (
-  url: string,
-  messageId: string | undefined,
-  payload: any,
-  onNewMessageId?: (id: string) => void
-) => {
-  if (!url) return;
-  try {
-    if (messageId) {
-      await fetch(`${url}/messages/${messageId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } else {
-      const res = await fetch(`${url}?wait=true`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok && onNewMessageId) {
-        const data = await res.json();
-        if (data.id) onNewMessageId(data.id);
-      }
+    if (res.ok && type === 'open' && !messageId && onNewMessageId) {
+      const data = await res.json();
+      if (data.id) onNewMessageId(data.id);
     }
   } catch (error) {
-    console.error("Failed to trigger webhook status", error);
+    console.error("Failed to trigger secure notification", error);
   }
 };
 
@@ -160,11 +134,9 @@ export function useAppStore() {
 
 export const store = {
   isAdminAuthenticated: (): boolean => {
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return false;
     return sessionStorage.getItem('epic-rail-admin-auth') === 'true';
   },
   setAdminAuth: (val: boolean) => {
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
     if (val) sessionStorage.setItem('epic-rail-admin-auth', 'true');
     else sessionStorage.removeItem('epic-rail-admin-auth');
   },
@@ -191,12 +163,12 @@ export const store = {
   updateApplicationStatus: async (id: string, status: 'Accepted' | 'Rejected', apps: Application[], config: AppConfig) => {
     await updateDoc(doc(db, "applications", id), { status });
     const idx = apps.findIndex(a => a.id === id);
-    if (idx !== -1 && config.discordWebhookUrlResults) {
+    if (idx !== -1) {
       const accepted = apps.filter(a => a.status === 'Accepted').length + (status === 'Accepted' ? 1 : 0) - (apps[idx].status === 'Accepted' ? 1 : 0);
       const rejected = apps.filter(a => a.status === 'Rejected').length + (status === 'Rejected' ? 1 : 0) - (apps[idx].status === 'Rejected' ? 1 : 0);
       const pending = apps.filter(a => a.status === 'Pending').length - (apps[idx].status === 'Pending' ? 1 : 0);
 
-      notifyDiscord(config.discordWebhookUrlResults, {
+      notifyDiscord('results', {
         embeds: [{
           title: `Application ${status}`,
           description: `**${apps[idx].discordUsername}** has been **${status.toLowerCase()}** for the **${apps[idx].applicationType}** role.\n\n**Current Stats:**\n✅ Accepted: ${accepted}\n❌ Rejected: ${rejected}\n⏳ Pending: ${pending}`,
@@ -213,12 +185,5 @@ export const store = {
     for (const app of toDelete) {
       await deleteDoc(doc(db, "applications", app.id));
     }
-  },
-  findApplication: (apps: Application[], query: string): Application | undefined => {
-    const lowerQ = query.trim().toLowerCase();
-    return apps.find(a =>
-      a.id.toLowerCase() === lowerQ ||
-      a.discordUsername.toLowerCase() === lowerQ
-    );
   }
 };

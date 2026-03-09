@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBM2QrnbtlTWysMbnuklQ3jL3reoRSLTRk",
-    authDomain: "epic-rail-app.firebaseapp.com",
-    projectId: "epic-rail-app",
-    storageBucket: "epic-rail-app.firebasestorage.app",
-    messagingSenderId: "43708952563",
-    appId: "1:43708952563:web:e2c8e55a06098831ac6c86"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);

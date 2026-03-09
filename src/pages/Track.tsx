@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Clock, CheckCircle2, XCircle, Inbox } from "lucide-react";
-import { useAppStore, store } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import TrainLoader from "@/components/TrainLoader";
 
@@ -21,7 +21,8 @@ const Track = () => {
     setSearching(true);
     setResult(null);
     await new Promise((r) => setTimeout(r, 1500));
-    const app = store.findApplication(applications, query);
+    const lowerQ = query.trim().toLowerCase();
+    const app = applications.find(a => a.id.toLowerCase() === lowerQ || a.discordUsername.toLowerCase() === lowerQ);
     if (app) {
       setResult({ status: app.status, id: app.id, username: app.discordUsername });
     } else {

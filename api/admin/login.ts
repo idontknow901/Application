@@ -1,15 +1,10 @@
-// Vercel Serverless Function for admin login
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Debug: show that .env is loaded
-console.log('🔑 ADMIN_PASSWORD_HASH (first 20 chars):', process.env.ADMIN_PASSWORD_HASH?.slice(0, 20));
-
-// Load env variables (Vercel injects them at runtime)
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 
@@ -25,9 +20,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
+    if (!ADMIN_PASSWORD_HASH) {
+        console.error('❌ ADMIN_PASSWORD_HASH is missing from environment variables!');
+        res.status(500).json({ error: 'Admin password not configured on server' });
+        return;
+    }
+
     const isMatch = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
-    console.log('🔍 bcrypt compare result:', isMatch);
+
     if (!isMatch) {
+        console.warn('⚠️ Login attempt failed: password does not match hash');
         res.status(401).json({ error: 'Invalid administrator password' });
         return;
     }

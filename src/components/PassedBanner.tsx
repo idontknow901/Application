@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PartyPopper, X } from "lucide-react";
-import { useAppStore, store } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 
 const PassedBanner = () => {
   const { applications } = useAppStore();
@@ -12,7 +12,8 @@ const PassedBanner = () => {
     // Check if user has a stored discord username and was accepted
     const saved = localStorage.getItem("epic-rail-user-discord");
     if (saved) {
-      const app = store.findApplication(applications, saved);
+      const lowerQ = saved.trim().toLowerCase();
+      const app = applications.find(a => a.id.toLowerCase() === lowerQ || a.discordUsername.toLowerCase() === lowerQ);
       if (app && app.status === "Accepted") {
         setUsername(app.discordUsername);
         setShow(true);

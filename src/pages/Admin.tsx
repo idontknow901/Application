@@ -5,11 +5,9 @@ import {
   ClipboardList, Settings, Users, RotateCcw, ArrowLeft, ChevronRight,
   Briefcase
 } from "lucide-react";
-import { store, useAppStore, APPLICATION_TYPES, type Application, type Question, type ApplicationType, type AppStep } from "@/lib/store";
+import { store, useAppStore, APPLICATION_TYPES, type Application, type Question, type ApplicationType, type AppStep, notifyDiscord } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-
 
 const Admin = () => {
   const [authenticated, setAuthenticated] = useState(store.isAdminAuthenticated());
@@ -26,27 +24,22 @@ const Admin = () => {
   });
 
   const handleLogin = async () => {
-    if (!password.trim()) {
-      toast.error("Please enter a password");
-      return;
-    }
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password: password.trim() }),
       });
+
       if (res.ok) {
-        // Server sets HttpOnly cookie; also set client flag for UI
         store.setAdminAuth(true);
         setAuthenticated(true);
-        toast.success("Identity Verified", { description: "Full admin access granted." });
+        toast.success("Welcome back, Admin!");
       } else {
-        const data = await res.json();
-        toast.error(data.error || "Invalid administrator password");
+        toast.error("Invalid password");
       }
-    } catch (e) {
-      toast.error("Login failed. Please try again.");
+    } catch (error) {
+      toast.error("Login service unavailable");
     }
   };
 
@@ -55,6 +48,18 @@ const Admin = () => {
     const next = { ...config, recruitmentOpen: isOpening };
     store.setConfig(next);
     toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
+
+    // Notify Discord securely through proxy
+    notifyDiscord('open', {
+      embeds: [{
+        title: "Recruitment Status Updated",
+        description: `Applications are now **${isOpening ? "OPEN" : "CLOSED"}**!`,
+        color: isOpening ? 0x00ff00 : 0xff0000,
+        timestamp: new Date().toISOString()
+      }]
+    }, config.discordWebhookMessageIdOpen, (id) => {
+      store.setConfig({ ...next, discordWebhookMessageIdOpen: id });
+    });
   };
 
   const toggleAppType = (type: ApplicationType) => {
@@ -128,34 +133,20 @@ const Admin = () => {
             style={{ background: "hsl(var(--card) / 0.8)" }}
           >
             <Lock className="w-14 h-14 mx-auto mb-4 text-primary" />
-            <h2 className="font-display text-2xl font-bold text-primary mb-2">
-              Admin Access
-            </h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Please enter the primary administrator password.
-            </p>
-
-            <motion.div
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                placeholder="Enter password"
-                className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4 backdrop-blur-sm shadow-inner"
-                autoFocus
-              />
-            </motion.div>
-
+            <h2 className="font-display text-2xl font-bold text-primary mb-6">Admin Access</h2>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              placeholder="Enter password"
+              className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4 backdrop-blur-sm"
+            />
             <button
               onClick={handleLogin}
-              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold hover:scale-[1.02] active:scale-[0.98] transition-all truncate shadow-lg shadow-primary/20"
+              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold hover:scale-105 transition-transform truncate"
             >
-              Verify & Login
+              Login
             </button>
           </div>
         </div>
@@ -279,50 +270,36 @@ const Admin = () => {
                 </button>
               </div>
 
-              {/* Webhook Configuration */}
-              <div className="glass-card p-6 border border-primary/30 shadow-lg" style={{ background: "hsl(var(--card) / 0.8)" }}>
-                <h2 className="font-display text-2xl font-black text-primary mb-6 text-center">Discord Webhooks</h2>
+              {/* Webhook Configuration - Secure Mode */}
+              <div className="glass-card p-6 border border-emerald/30 shadow-lg" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h2 className="font-display text-2xl font-black text-emerald mb-4 text-center">Managed Security</h2>
+                <p className="text-sm text-center text-muted-foreground mb-6">
+                  Discord webhooks and API keys are now managed securely via **environment variables**.
+                  They are hidden from the public and cannot be intercepted.
+                </p>
                 <div className="space-y-6">
-                  <div>
-                    <label className="text-base font-bold text-emerald mb-1 block">Recruitment Status Webhook</label>
-                    <p className="text-xs text-foreground/80 mb-2">Triggers when an application is opened/closed.</p>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={config.discordWebhookUrlOpen || ""}
-                        onChange={(e) => {
-                          const updated = { ...config, discordWebhookUrlOpen: e.target.value, discordWebhookMessageIdOpen: "" };
-                          store.setConfig(updated);
-                        }}
-                        placeholder="https://discord.com/api/webhooks/..."
-                        className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-2.5 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald/50"
-                      />
+                  <div className="p-4 rounded-xl bg-background/50 border border-border/30">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <label className="text-base font-bold text-emerald block">Status Webhook</label>
+                        <p className="text-xs text-foreground/70">Managed in server settings</p>
+                      </div>
                       <button
                         onClick={() => {
-                          const u = { ...config, discordWebhookMessageIdOpen: "" };
-                          store.setConfig(u);
-                          toast.success("Webhook Link Reset", { description: "The next Status toggle will post a new embedded message." });
+                          store.setConfig({ ...config, discordWebhookMessageIdOpen: "" });
+                          toast.success("Status Link Reset", { description: "The next toggle will post a new embed." });
                         }}
-                        className="px-4 py-2.5 botghost-btn"
+                        className="p-2.5 botghost-btn"
                         title="Reset linked message ID"
                       >
                         <RotateCcw className="w-5 h-5 text-emerald" />
                       </button>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-base font-bold text-primary mb-1 block">Results Webhook</label>
-                    <p className="text-xs text-foreground/80 mb-2">Triggers when you Accept or Reject an applicant.</p>
-                    <input
-                      type="text"
-                      value={config.discordWebhookUrlResults || ""}
-                      onChange={(e) => {
-                        const updated = { ...config, discordWebhookUrlResults: e.target.value };
-                        store.setConfig(updated);
-                      }}
-                      placeholder="https://discord.com/api/webhooks/..."
-                      className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-2.5 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
+
+                  <div className="p-4 rounded-xl bg-background/50 border border-border/30">
+                    <label className="text-base font-bold text-primary block">Results Webhook</label>
+                    <p className="text-xs text-foreground/70">Managed in server settings</p>
                   </div>
                 </div>
               </div>
