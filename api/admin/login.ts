@@ -20,7 +20,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
-    const trimmedHash = ADMIN_PASSWORD_HASH.trim();
+    // Clean the hash from trailing periods or spaces (common in manual ENV entry)
+    const trimmedHash = ADMIN_PASSWORD_HASH.trim().replace(/\.$/, '');
+
     if (!trimmedHash) {
         console.error('❌ ADMIN_PASSWORD_HASH is missing or empty!');
         res.status(500).json({ error: 'Admin password not configured on server' });
