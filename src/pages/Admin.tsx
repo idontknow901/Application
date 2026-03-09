@@ -154,29 +154,6 @@ const Admin = () => {
     );
   }
 
-  const [adminLoadingDelay, setAdminLoadingDelay] = useState(true);
-  useEffect(() => {
-    if (authenticated) {
-      const timer = setTimeout(() => setAdminLoadingDelay(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [authenticated]);
-
-  if (authenticated && (loading || adminLoadingDelay)) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background space-y-6">
-        <div className="relative w-20 h-20">
-          <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
-          <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        </div>
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-black text-primary animate-pulse tracking-widest uppercase">Initializing</h2>
-          <p className="text-muted-foreground font-mono text-sm">Opening Secure Admin Portal...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <PageWrapper>
       <div className="container mx-auto px-4 max-w-full sm:max-w-5xl py-6 min-h-[100vh] [overflow-y:overlay] z-10 relative">

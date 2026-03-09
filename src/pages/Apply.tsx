@@ -15,7 +15,9 @@ const Apply = () => {
   const [selectedAppType, setSelectedAppType] = useState<ApplicationType | "">("");
   const [submitting, setSubmitting] = useState(false);
 
-  const openTypes = config.openApplicationTypes || APPLICATION_TYPES;
+  const openTypes = (config.openApplicationTypes && config.openApplicationTypes.length > 0)
+    ? config.openApplicationTypes
+    : APPLICATION_TYPES;
 
   const stepQuestions = useMemo(() => {
     const currentStepObj = steps[currentStep - 1];
