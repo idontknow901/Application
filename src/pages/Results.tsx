@@ -5,8 +5,7 @@ import PageWrapper from "@/components/PageWrapper";
 const Results = () => {
   const { applications: apps, loading, config } = useAppStore(true);
 
-  if (loading) return null;
-
+  // Render instantly with what we have
   const accepted = apps.filter((a) => a.status === "Accepted");
   const rejected = apps.filter((a) => a.status === "Rejected");
 

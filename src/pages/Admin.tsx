@@ -154,7 +154,7 @@ const Admin = () => {
     );
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-primary font-bold">Loading secure portal...</div>;
+  if (loading && applications.length === 0) return <div className="min-h-screen flex items-center justify-center text-primary font-bold">Synchronizing Secure Data...</div>;
 
   return (
     <PageWrapper>

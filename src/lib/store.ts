@@ -80,12 +80,11 @@ export const notifyDiscord = async (type: 'open' | 'results', payload: any, mess
 };
 
 export function useAppStore(isAdmin = false) {
-  const [config, setConfig] = useState<AppConfig | null>(null);
-  const [steps, setSteps] = useState<AppStep[] | null>(null);
-  const [questions, setQuestions] = useState<Question[] | null>(null);
-  const [applications, setApplications] = useState<Application[] | null>(isAdmin ? null : []);
-
-  const loading = config === null || steps === null || questions === null || applications === null;
+  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const [steps, setSteps] = useState<AppStep[]>(DEFAULT_STEPS);
+  const [questions, setQuestions] = useState<Question[]>(DEFAULT_QUESTIONS);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(isAdmin); // Only show loading for Admin if needed
 
   useEffect(() => {
     const unsubConfig = onSnapshot(doc(db, "settings", "config"), (docSn) => {
@@ -93,20 +92,15 @@ export function useAppStore(isAdmin = false) {
         const data = docSn.data() as AppConfig;
         if (!data.openApplicationTypes) data.openApplicationTypes = [...APPLICATION_TYPES];
         setConfig(data);
-      } else {
-        setDoc(doc(db, "settings", "config"), DEFAULT_CONFIG);
-        setConfig(DEFAULT_CONFIG);
       }
     });
 
     const unsubSteps = onSnapshot(doc(db, "settings", "steps"), (docSn) => {
       if (docSn.exists()) setSteps(docSn.data()?.items || DEFAULT_STEPS);
-      else { setDoc(doc(db, "settings", "steps"), { items: DEFAULT_STEPS }); setSteps(DEFAULT_STEPS); }
     });
 
     const unsubQ = onSnapshot(doc(db, "settings", "questions"), (docSn) => {
       if (docSn.exists()) setQuestions(docSn.data()?.items || DEFAULT_QUESTIONS);
-      else { setDoc(doc(db, "settings", "questions"), { items: DEFAULT_QUESTIONS }); setQuestions(DEFAULT_QUESTIONS); }
     });
 
     let unsubApps = () => { };
@@ -115,19 +109,14 @@ export function useAppStore(isAdmin = false) {
         const apps: Application[] = [];
         snap.forEach(d => apps.push(d.data() as Application));
         setApplications(apps);
+        setLoading(false); // Stop loading once first batch arrives
       });
     }
 
     return () => { unsubConfig(); unsubSteps(); unsubQ(); unsubApps(); };
   }, [isAdmin]);
 
-  return {
-    config: config || DEFAULT_CONFIG,
-    steps: steps || DEFAULT_STEPS,
-    questions: questions || DEFAULT_QUESTIONS,
-    applications: applications || [],
-    loading
-  };
+  return { config, steps, questions, applications, loading };
 }
 
 export const store = {

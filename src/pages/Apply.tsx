@@ -32,16 +32,6 @@ const Apply = () => {
 
   const maxStep = steps.length;
 
-  if (loading) {
-    return (
-      <PageWrapper>
-        <div className="container mx-auto px-4 flex items-center justify-center min-h-[60vh]">
-          <TrainLoader text="Loading form..." />
-        </div>
-      </PageWrapper>
-    );
-  }
-
   if (!config.recruitmentOpen) {
     return (
       <PageWrapper>
