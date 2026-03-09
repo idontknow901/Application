@@ -3,18 +3,14 @@ import { db } from "./firebase";
 import { doc, collection, onSnapshot, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 
 export type ApplicationType =
-  | 'Driver'
-  | 'Guard'
-  | 'Dispatcher'
-  | 'Station Master'
-  | 'Signaller';
+  | 'Railway Police Force [Mod]'
+  | 'Railway Promotion Board [Public Relation Department]'
+  | 'Safety Department [Testing]';
 
 export const APPLICATION_TYPES: ApplicationType[] = [
-  'Driver',
-  'Guard',
-  'Dispatcher',
-  'Station Master',
-  'Signaller'
+  'Railway Police Force [Mod]',
+  'Railway Promotion Board [Public Relation Department]',
+  'Safety Department [Testing]'
 ];
 
 export interface AppStep {
@@ -30,7 +26,7 @@ export interface Question {
   type: 'text' | 'textarea' | 'select' | 'boolean';
   options?: string[];
   required: boolean;
-  appType?: ApplicationType | 'General';
+  appType?: ApplicationType;
 }
 
 export interface Application {
@@ -53,8 +49,9 @@ export interface AppConfig {
 
 export const DEFAULT_STEPS: AppStep[] = [
   { id: 1, name: "Discord Info & Role", description: "Basic details about you" },
-  { id: 2, name: "Questions", description: "Role-specific and general questions" },
+  { id: 2, name: "Questions", description: "Role-specific questions" },
 ];
+
 export const DEFAULT_QUESTIONS: Question[] = [];
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -214,5 +211,12 @@ export const store = {
     for (const app of toDelete) {
       await deleteDoc(doc(db, "applications", app.id));
     }
+  },
+  findApplication: (apps: Application[], query: string): Application | undefined => {
+    const lowerQ = query.trim().toLowerCase();
+    return apps.find(a =>
+      a.id.toLowerCase() === lowerQ ||
+      a.discordUsername.toLowerCase() === lowerQ
+    );
   }
 };

@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Train } from "lucide-react";
+
 
 const links = [
   { to: "/", label: "Home" },
@@ -14,28 +13,23 @@ const Navbar = () => {
   const { pathname } = useLocation();
 
   return (
-    <motion.nav
-      initial={{ y: -60, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50 backdrop-blur-xl"
-      style={{ background: "hsl(var(--card))" }}
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80 supports-[backdrop-filter]:bg-background/60"
     >
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <Train className="w-8 h-8 text-primary" />
-          <span className="font-display text-lg font-bold text-primary hidden sm:inline">
+        <Link to="/" className="flex items-center gap-3 group">
+          <span className="font-sans text-xl font-bold tracking-tight text-white/90 group-hover:text-white transition-colors">
             Epic Rail of India
           </span>
         </Link>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {links.map((link) => (
             <Link
               key={link.to}
               to={link.to}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === link.to
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted hover:text-primary hover:bg-primary/10"
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${pathname === link.to
+                ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsla(262,83%,58%,0.3)]"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
             >
               {link.label}
@@ -43,7 +37,7 @@ const Navbar = () => {
           ))}
         </div>
       </div>
-    </motion.nav>
+    </nav>
   );
 };
 

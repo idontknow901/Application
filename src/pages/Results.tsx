@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
@@ -14,25 +13,21 @@ const Results = () => {
   return (
     <PageWrapper>
       <div className="container mx-auto px-4 max-w-4xl">
-        <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="font-display text-4xl font-bold text-center mb-12 text-primary"
+        <h1
+          className="font-display text-4xl font-bold text-center mb-12 text-bg-primary"
         >
           Application Results
-        </motion.h1>
+        </h1>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Accepted */}
-          <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass-card p-6 border-[#1E232B] bg-[#161920]"
+          <div
+            className="glass-card p-6 border-border"
+            style={{ background: "hsl(var(--card) / 0.4)" }}
           >
             <div className="flex items-center gap-3 mb-6">
-              <CheckCircle2 className="w-7 h-7 text-green-500" />
-              <h2 className="font-display text-2xl font-bold text-green-500">
+              <CheckCircle2 className="w-7 h-7 text-emerald" />
+              <h2 className="font-display text-2xl font-bold text-emerald">
                 Successful Candidates
               </h2>
             </div>
@@ -43,38 +38,33 @@ const Results = () => {
             ) : (
               <div className="space-y-3">
                 {accepted.map((a, i) => (
-                  <motion.div
+                  <div
                     key={a.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * i }}
-                    className="flex items-center justify-between rounded-lg bg-green-500/10 px-4 py-3"
+                    className="flex items-center justify-between rounded-lg bg-emerald/10 px-4 py-3"
                   >
                     <div>
                       <p className="font-semibold text-foreground">
                         {a.discordUsername}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {a.answers?.["q5"] || a.applicationType || "General"}
+                        {a.answers["q5"] || "General"}
                       </p>
                     </div>
-                    <span className="text-xs font-mono text-green-500">{a.id}</span>
-                  </motion.div>
+                    <span className="text-xs font-mono text-emerald">{a.id}</span>
+                  </div>
                 ))}
               </div>
             )}
-          </motion.div>
+          </div>
 
           {/* Rejected */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="glass-card p-6 border-[#1E232B] bg-[#161920]"
+          <div
+            className="glass-card p-6 border-border"
+            style={{ background: "hsl(var(--card) / 0.4)" }}
           >
             <div className="flex items-center gap-3 mb-6">
-              <XCircle className="w-7 h-7 text-red-500" />
-              <h2 className="font-display text-2xl font-bold text-red-500">
+              <XCircle className="w-7 h-7 text-crimson" />
+              <h2 className="font-display text-2xl font-bold text-crimson">
                 Recent Reviews
               </h2>
             </div>
@@ -85,22 +75,19 @@ const Results = () => {
             ) : (
               <div className="space-y-3">
                 {rejected.map((a, i) => (
-                  <motion.div
+                  <div
                     key={a.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * i }}
-                    className="flex items-center justify-between rounded-lg bg-red-500/10 px-4 py-3"
+                    className="flex items-center justify-between rounded-lg bg-crimson/10 px-4 py-3"
                   >
                     <p className="font-semibold text-foreground">
                       {a.discordUsername}
                     </p>
-                    <span className="text-xs font-mono text-red-500">{a.id}</span>
-                  </motion.div>
+                    <span className="text-xs font-mono text-crimson">{a.id}</span>
+                  </div>
                 ))}
               </div>
             )}
-          </motion.div>
+          </div>
         </div>
       </div>
     </PageWrapper>

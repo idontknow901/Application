@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Search, Clock, CheckCircle2, XCircle, Inbox } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, store } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import TrainLoader from "@/components/TrainLoader";
 
 const statusConfig = {
   Pending: { icon: Clock, color: "text-primary", bg: "bg-primary/10", label: "Application Received — Under Review" },
-  Accepted: { icon: CheckCircle2, color: "text-green-500", bg: "bg-green-500/10", label: "Congratulations! You've been Accepted 🎉" },
-  Rejected: { icon: XCircle, color: "text-red-500", bg: "bg-red-500/10", label: "Thank you for applying. Unfortunately, your application was not successful." },
+  Accepted: { icon: CheckCircle2, color: "text-emerald", bg: "bg-emerald/10", label: "Congratulations! You've been Accepted 🎉" },
+  Rejected: { icon: XCircle, color: "text-crimson", bg: "bg-crimson/10", label: "Thank you for applying. Unfortunately, your application was not successful." },
 };
 
 const Track = () => {
@@ -22,8 +21,7 @@ const Track = () => {
     setSearching(true);
     setResult(null);
     await new Promise((r) => setTimeout(r, 1500));
-    const lowerQ = query.trim().toLowerCase();
-    const app = applications.find(a => a.id.toLowerCase() === lowerQ || a.discordUsername.toLowerCase() === lowerQ);
+    const app = store.findApplication(applications, query);
     if (app) {
       setResult({ status: app.status, id: app.id, username: app.discordUsername });
     } else {
@@ -35,23 +33,17 @@ const Track = () => {
   return (
     <PageWrapper>
       <div className="container mx-auto px-4 max-w-xl">
-        <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="font-display text-4xl font-bold text-center mb-3 text-primary"
+        <h1
+          className="font-display text-4xl font-bold text-center mb-3 text-bg-primary"
         >
           Track Your Application
-        </motion.h1>
+        </h1>
         <p className="text-center text-muted-foreground mb-10">
           Enter your Application ID or Discord Username
         </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass-card p-8"
-          style={{ background: "hsl(var(--card))" }}
+        <div
+          className="glass-card p-8 bg-card/40"
         >
           <div className="flex gap-3">
             <input
@@ -65,7 +57,7 @@ const Track = () => {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="px-5 py-3 rounded-lg bg-primary text-white font-bold uppercase hover:brightness-110 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center"
+              className="px-5 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:scale-105 transition-transform disabled:opacity-50"
             >
               <Search className="w-5 h-5" />
             </button>
@@ -78,9 +70,7 @@ const Track = () => {
           )}
 
           {result && !searching && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
+            <div
               className="mt-8"
             >
               {result === "not_found" ? (
@@ -110,9 +100,9 @@ const Track = () => {
                   })()}
                 </div>
               )}
-            </motion.div>
+            </div>
           )}
-        </motion.div>
+        </div>
       </div>
     </PageWrapper>
   );

@@ -1,53 +1,43 @@
 import { useState, useMemo } from "react";
+
 import {
-  Lock, Check, X, Trash2, Plus, LogOut,
-  ClipboardList, Settings, Users, RotateCcw, ChevronLeft
+  Lock, ToggleLeft, ToggleRight, Check, X, Trash2, Plus, LogOut,
+  ClipboardList, Settings, Users, RotateCcw, ArrowLeft, ChevronRight,
+  Briefcase
 } from "lucide-react";
-import { store, useAppStore, APPLICATION_TYPES, notifyDiscordOpenStatus, type Application, type Question, type ApplicationType, type AppStep } from "@/lib/store";
+import { store, useAppStore, APPLICATION_TYPES, type Application, type Question, type ApplicationType, type AppStep } from "@/lib/store";
+import { hashInput } from "@/lib/crypto";
 import PageWrapper from "@/components/PageWrapper";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
-// Client-side portable hash to avoid HTTPS crypto.subtle requirement on mobile/local dev
-const simpleHash = (str: string) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash.toString();
-};
-
-const verifyPassword = async (input: string) => {
-  // Hash for "epicrail2024"
-  return simpleHash(input) === "-1133285993";
-};
+// Secure Admin Password Hash (One-way)
+const ADMIN_PASSWORD_HASH = "d71bcee86f367f8519f264221674d1072ebb3f66777686030059d201946f7d11";
 
 const Admin = () => {
   const [authenticated, setAuthenticated] = useState(store.isAdminAuthenticated());
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState<"dashboard" | "questions" | "review">("dashboard");
+  const [selectedAppType, setSelectedAppType] = useState<string | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<string>("All");
 
   const { config, applications, questions, steps, loading } = useAppStore();
 
   const [newStep, setNewStep] = useState({ name: "", description: "" });
   const [newQ, setNewQ] = useState<{ label: string; step: number; type: 'text' | 'textarea' | 'select' | 'boolean' }>({
-    label: "", step: 1, type: "text",
+    label: "", step: 1, type: "text"
   });
 
-  // Dedicated question page state
-  const [selectedRoleForQs, setSelectedRoleForQs] = useState<ApplicationType | null>(null);
-
-  // Review filter state
-  const [reviewFilter, setReviewFilter] = useState<"All" | ApplicationType>("All");
-
   const handleLogin = async () => {
-    const isValid = await verifyPassword(password);
-    if (isValid) {
+    if (!password.trim()) return;
+
+    const inputHash = await hashInput(password);
+    if (inputHash === ADMIN_PASSWORD_HASH) {
       store.setAdminAuth(true);
       setAuthenticated(true);
-      toast.success("Welcome back, Admin!");
+      toast.success("Identity Verified", { description: "Full admin access granted." });
     } else {
-      toast.error("Invalid password");
+      toast.error("Invalid administrator password");
     }
   };
 
@@ -56,24 +46,6 @@ const Admin = () => {
     const next = { ...config, recruitmentOpen: isOpening };
     store.setConfig(next);
     toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
-
-    if (next.discordWebhookUrlOpen) {
-      notifyDiscordOpenStatus(
-        next.discordWebhookUrlOpen,
-        next.discordWebhookMessageIdOpen,
-        {
-          embeds: [{
-            title: `Live Recruitment Status`,
-            description: `Application portal is currently **${isOpening ? "OPEN" : "CLOSED"}**.\n\n**Available Positions:**\n${next.openApplicationTypes.length > 0 ? next.openApplicationTypes.map(t => `• ${t}`).join('\n') : "None"}`,
-            color: isOpening && next.openApplicationTypes.length > 0 ? 0x00ff00 : 0xff0000,
-          }]
-        },
-        (newId) => {
-          const cfgWithId = { ...next, discordWebhookMessageIdOpen: newId };
-          store.setConfig(cfgWithId);
-        }
-      );
-    }
   };
 
   const toggleAppType = (type: ApplicationType) => {
@@ -98,14 +70,14 @@ const Admin = () => {
   };
 
   const addQuestion = () => {
-    if (!newQ.label.trim() || !selectedRoleForQs) return;
+    if (!newQ.label.trim() || !selectedAppType) return;
     const q: Question = {
       id: "q-" + Date.now(),
-      step: newQ.step || (steps[0] ? steps[0].id : 1),
+      step: newQ.step,
       label: newQ.label,
       type: newQ.type,
       required: true,
-      appType: selectedRoleForQs,
+      appType: selectedAppType as ApplicationType,
     };
     const updated = [...questions, q];
     store.setQuestions(updated);
@@ -135,26 +107,46 @@ const Admin = () => {
     toast.success("Step removed");
   };
 
+  const pending = applications.filter((a) => a.status === "Pending");
+  const filteredPending = reviewFilter === "All" ? pending : pending.filter(a => a.applicationType === reviewFilter);
+
   if (!authenticated) {
     return (
       <PageWrapper>
-        <div className="container mx-auto px-4 max-w-md flex items-center justify-center min-h-[60vh]">
-          <div className="glass-card p-10 w-full text-center bg-card/80">
+        <div className="container mx-auto px-4 max-w-full sm:max-w-md flex items-center justify-center min-h-[60vh] py-10">
+          <div
+            className="glass-card p-6 sm:p-10 w-full text-center max-w-full overflow-hidden"
+            style={{ background: "hsl(var(--card) / 0.8)" }}
+          >
             <Lock className="w-14 h-14 mx-auto mb-4 text-primary" />
-            <h2 className="font-display text-2xl font-bold text-primary mb-6">Admin Access</h2>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              placeholder="Enter password"
-              className="w-full rounded-md border border-[#1e232b] bg-[#161920] px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary mb-4"
-            />
+            <h2 className="font-display text-2xl font-bold text-primary mb-2">
+              Admin Access
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Please enter the primary administrator password.
+            </p>
+
+            <motion.div
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                placeholder="Enter password"
+                className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4 backdrop-blur-sm shadow-inner"
+                autoFocus
+              />
+            </motion.div>
+
             <button
               onClick={handleLogin}
-              className="w-full py-3 rounded-md bg-primary hover:brightness-110 active:scale-[0.98] outline-primary text-white font-semibold uppercase transition-all"
+              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold hover:scale-[1.02] active:scale-[0.98] transition-all truncate shadow-lg shadow-primary/20"
             >
-              Login
+              Verify & Login
             </button>
           </div>
         </div>
@@ -164,110 +156,107 @@ const Admin = () => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-primary font-bold">Loading secure portal...</div>;
 
-  const pending = applications.filter((a) => a.status === "Pending");
-
-  const filteredApps = useMemo(() => {
-    if (reviewFilter === "All") return pending;
-    return pending.filter(a => a.applicationType === reviewFilter);
-  }, [pending, reviewFilter]);
-
-  const allTypes: ("All" | ApplicationType)[] = ["All", ...APPLICATION_TYPES];
-
   return (
     <PageWrapper>
-      <div className="container mx-auto px-4 max-w-5xl flex-1 flex flex-col">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-display text-3xl font-bold text-primary">Admin Panel</h1>
+      <div className="container mx-auto px-4 max-w-full sm:max-w-5xl py-6 min-h-[100vh] [overflow-y:overlay] z-10 relative">
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
+          <h1 className="font-display text-3xl font-bold text-primary drop-shadow-sm text-center sm:text-left w-full sm:w-auto">Admin Panel</h1>
           <button
             onClick={() => { store.setAdminAuth(false); setAuthenticated(false); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-md bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors text-sm font-semibold uppercase"
+            className="flex items-center gap-2 px-4 py-2 botghost-btn !text-red-400 !border-red-500/30 w-full sm:w-auto justify-center"
           >
             <LogOut className="w-4 h-4" /> Logout
           </button>
         </div>
 
-        {/* Flat high-contrast Tabs without animation */}
-        <div className="flex gap-2 mb-8 p-1 bg-[#161920] rounded-md border border-[#1e232b]">
-          {[
-            { id: "dashboard" as const, icon: Settings, label: "Dashboard" },
-            { id: "questions" as const, icon: ClipboardList, label: "Questions" },
-            { id: "review" as const, icon: Users, label: `Review (${pending.length})` },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => { setTab(t.id); setSelectedRoleForQs(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-semibold uppercase transition-none ${tab === t.id
-                ? "bg-primary text-white"
-                : "bg-transparent text-muted-foreground hover:text-white"
-                }`}
-            >
-              <t.icon className="w-4 h-4" /> {t.label}
-            </button>
-          ))}
+        {/* Tabs */}
+        <div className="w-full overflow-x-auto pb-2 scrollbar-hide mb-8">
+          <div className="flex gap-2 min-w-max">
+            {[
+              { id: "dashboard" as const, icon: Settings, label: "Dashboard" },
+              { id: "questions" as const, icon: ClipboardList, label: "Questions" },
+              { id: "review" as const, icon: Users, label: `Review (${pending.length})` },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { setTab(t.id); setSelectedAppType(null); }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-[8px] text-sm font-bold uppercase transition-all border ${tab === t.id
+                  ? "bg-[#161920] text-primary border-[#1e232b]"
+                  : "bg-transparent text-muted-foreground hover:bg-[#161920] border-transparent hover:border-[#1e232b]"
+                  }`}
+              >
+                <t.icon className="w-4 h-4" /> {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div>
+        <div className="relative w-full">
           {tab === "dashboard" && (
-            <div className="space-y-6">
-              {/* Recruitment Toggle */}
-              <div className="glass-card p-8 bg-[#161920] border-[#1e232b]">
+            <div
+              key="dashboard"
+              className="space-y-6 w-full"
+            >
+              <div className="glass-card p-6 sm:p-8" style={{ background: "hsl(var(--card) / 0.8)" }}>
                 <h2 className="font-display text-xl font-bold text-primary mb-6">Recruitment Status</h2>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 mb-8">
                   <button onClick={toggleRecruitment} className="flex items-center gap-3">
-                    <div className={`w-14 h-8 rounded-full border border-[#1e232b] flex items-center transition-colors px-1 ${config.recruitmentOpen ? 'bg-primary' : 'bg-[#0f1115]'}`}>
-                      <div className={`w-6 h-6 rounded-full bg-white transition-transform ${config.recruitmentOpen ? 'translate-x-6' : 'translate-x-0'}`} />
-                    </div>
+                    {config.recruitmentOpen ? (
+                      <ToggleRight className="w-12 h-12 text-emerald" />
+                    ) : (
+                      <ToggleLeft className="w-12 h-12 text-muted-foreground" />
+                    )}
                   </button>
-                  <div>
-                    <p className="font-bold text-lg text-foreground">
-                      {config.recruitmentOpen ? "OPEN" : "CLOSED"}
+                  <div className="overflow-hidden">
+                    <p className={`font-bold text-lg ${config.recruitmentOpen ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {config.recruitmentOpen ? "LIVE" : "OFFLINE"}
                     </p>
-                    <p className="text-sm text-muted-foreground">Click to toggle recruitment status</p>
+                    <p className="text-sm text-muted-foreground truncate">Click to toggle recruitment</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mt-8">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                   {[
-                    { label: "Total", val: applications.length, color: "text-primary" },
-                    { label: "Pending", val: pending.length, color: "text-white" },
-                    { label: "Accepted", val: applications.filter((a) => a.status === "Accepted").length, color: "text-green-500" },
+                    { label: "Total", val: applications.length, color: "text-primary border-primary/30" },
+                    { label: "Pending", val: pending.length, color: "text-blue border-blue/30" },
+                    { label: "Accepted", val: applications.filter((a) => a.status === "Accepted").length, color: "text-emerald border-emerald/30" },
                   ].map((s) => (
-                    <div key={s.label} className="rounded-md bg-[#0f1115] border border-[#1e232b] p-4 text-center">
-                      <p className={`text-3xl font-bold ${s.color}`}>{s.val}</p>
-                      <p className="text-xs text-muted-foreground mt-1 uppercase font-semibold">{s.label}</p>
+                    <div key={s.label} className={`rounded-xl bg-background/50 border p-4 sm:p-6 text-center shadow-inner ${s.color}`}>
+                      <p className={`text-3xl md:text-4xl font-black ${s.color.split(' ')[0]}`}>{s.val}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground mt-2 font-medium tracking-wide uppercase">{s.label}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Per-Application Type Controls */}
-              <div className="glass-card p-8 bg-[#161920] border-[#1e232b]">
+              <div className="glass-card p-6 sm:p-8" style={{ background: "hsl(var(--card) / 0.8)" }}>
                 <h2 className="font-display text-xl font-bold text-primary mb-6">Open Application Types</h2>
                 <p className="text-sm text-muted-foreground mb-4">Toggle which positions are currently accepting applications</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {APPLICATION_TYPES.map((type) => {
                     const isOpen = (config.openApplicationTypes || []).includes(type);
                     return (
                       <button
                         key={type}
                         onClick={() => toggleAppType(type)}
-                        className={`flex items-center justify-between gap-2 px-4 py-3 rounded-md text-sm font-semibold transition-none border ${isOpen
-                          ? "border-primary bg-primary/20 text-white"
-                          : "border-[#1e232b] bg-[#0f1115] text-muted-foreground"
+                        className={`flex items-center justify-between gap-2 px-4 py-4 rounded-xl text-sm font-semibold transition-all border ${isOpen
+                          ? "border-primary/50 bg-primary/10 text-primary shadow-md shadow-primary/10"
+                          : "border-border/30 bg-background/30 text-muted-foreground"
                           }`}
                       >
-                        {type}
-                        <div className={`w-8 h-4 rounded-full flex items-center px-0.5 ${isOpen ? 'bg-primary' : 'bg-[#1e232b]'}`}>
-                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${isOpen ? 'translate-x-4' : 'translate-x-0'}`} />
-                        </div>
+                        <span className="truncate">{type}</span>
+                        {isOpen ? (
+                          <ToggleRight className="w-6 h-6 shrink-0" />
+                        ) : (
+                          <ToggleLeft className="w-6 h-6 shrink-0" />
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Clear Results */}
-              <div className="glass-card p-8 bg-[#161920] border-[#1e232b]">
+              <div className="glass-card p-6 sm:p-8" style={{ background: "hsl(var(--card) / 0.8)" }}>
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Clear Results</h2>
                 <p className="text-sm text-muted-foreground mb-4">Remove all accepted and rejected applications from the results page</p>
                 <button
@@ -275,107 +264,214 @@ const Admin = () => {
                     await store.clearResults(applications);
                     toast.success("Results cleared — only pending applications remain");
                   }}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#161920] border border-[#1e232b] text-red-500 font-semibold uppercase hover:brightness-110 outline-primary active:scale-[0.98] transition-all"
+                  className="flex items-center gap-2 px-5 py-3 botghost-btn !text-red-400 !border-red-500/30 w-full sm:w-auto justify-center"
                 >
-                  <Trash2 className="w-4 h-4" /> Clear All Results
+                  <Trash2 className="w-5 h-5 shrink-0" /> Clear All Results
                 </button>
+              </div>
+
+              {/* Webhook Configuration */}
+              <div className="glass-card p-6 border border-primary/30 shadow-lg" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h2 className="font-display text-2xl font-black text-primary mb-6 text-center">Discord Webhooks</h2>
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-base font-bold text-emerald mb-1 block">Recruitment Status Webhook</label>
+                    <p className="text-xs text-foreground/80 mb-2">Triggers when an application is opened/closed.</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={config.discordWebhookUrlOpen || ""}
+                        onChange={(e) => {
+                          const updated = { ...config, discordWebhookUrlOpen: e.target.value, discordWebhookMessageIdOpen: "" };
+                          store.setConfig(updated);
+                        }}
+                        placeholder="https://discord.com/api/webhooks/..."
+                        className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-2.5 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald/50"
+                      />
+                      <button
+                        onClick={() => {
+                          const u = { ...config, discordWebhookMessageIdOpen: "" };
+                          store.setConfig(u);
+                          toast.success("Webhook Link Reset", { description: "The next Status toggle will post a new embedded message." });
+                        }}
+                        className="px-4 py-2.5 botghost-btn"
+                        title="Reset linked message ID"
+                      >
+                        <RotateCcw className="w-5 h-5 text-emerald" />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-base font-bold text-primary mb-1 block">Results Webhook</label>
+                    <p className="text-xs text-foreground/80 mb-2">Triggers when you Accept or Reject an applicant.</p>
+                    <input
+                      type="text"
+                      value={config.discordWebhookUrlResults || ""}
+                      onChange={(e) => {
+                        const updated = { ...config, discordWebhookUrlResults: e.target.value };
+                        store.setConfig(updated);
+                      }}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-2.5 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {tab === "questions" && (
-            <div className="space-y-6">
-              {!selectedRoleForQs ? (
-                <>
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-                    {allTypes.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => { }}
-                        className={`px-4 py-2 rounded-md text-sm font-semibold whitespace-nowrap border border-[#1e232b] bg-[#161920] text-muted-foreground cursor-default`}
-                      >
-                        {t}
-                        <span className="ml-2 bg-[#0f1115] px-2 py-0.5 rounded text-xs">{t === 'All' ? questions.length : questions.filter(q => q.appType === t).length}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {APPLICATION_TYPES.map((type) => {
-                      const count = questions.filter(q => q.appType === type).length;
-                      return (
-                        <button
-                          key={type}
-                          onClick={() => setSelectedRoleForQs(type)}
-                          className="glass-card p-6 bg-[#161920] border-[#1e232b] text-left hover:border-primary transition-colors flex flex-col rounded-md"
-                        >
-                          <h3 className="font-display text-lg font-bold text-white mb-2">{type}</h3>
-                          <p className="text-sm text-muted-foreground">{count} Questions</p>
-                          <div className="mt-4 text-xs font-semibold text-primary uppercase">Manage →</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-6">
-                  <button onClick={() => setSelectedRoleForQs(null)} className="flex items-center gap-2 text-muted-foreground hover:text-white mb-4 text-sm font-semibold uppercase">
-                    <ChevronLeft className="w-4 h-4" /> Back to roles
-                  </button>
-                  <h2 className="font-display text-2xl font-bold text-primary mb-6">Questions for {selectedRoleForQs}</h2>
+          {tab === "questions" && !selectedAppType && (
+            <div
+              key="questions-list"
+              className="space-y-6 w-full"
+            >
+              <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h3 className="font-display text-xl font-bold text-primary mb-6">Question Categories</h3>
+                <p className="text-sm text-muted-foreground mb-6">Select a category to view, add, or edit its questions.</p>
 
-                  {/* Add Question */}
-                  <div className="glass-card p-6 bg-[#161920] border-[#1e232b] rounded-md">
-                    <h3 className="font-display text-lg font-bold text-white mb-4">Add New Question</h3>
-                    <div className="flex flex-col gap-3">
-                      <input
-                        value={newQ.label}
-                        onChange={(e) => setNewQ({ ...newQ, label: e.target.value })}
-                        placeholder="Question text"
-                        className="w-full rounded-md border border-[#1e232b] bg-[#0f1115] px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                      <div className="flex flex-wrap gap-3">
-                        <select
-                          value={newQ.step}
-                          onChange={(e) => setNewQ({ ...newQ, step: Number(e.target.value) })}
-                          className="rounded-md border border-[#1e232b] bg-[#0f1115] px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          {steps.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                        <select
-                          value={newQ.type}
-                          onChange={(e) => setNewQ({ ...newQ, type: e.target.value as any })}
-                          className="rounded-md border border-[#1e232b] bg-[#0f1115] px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="text">Short Text</option>
-                          <option value="textarea">Long Text</option>
-                          <option value="boolean">True / False</option>
-                        </select>
-                        <button
-                          onClick={addQuestion}
-                          className="px-6 py-2.5 rounded-md bg-primary text-white font-semibold uppercase hover:brightness-110 transition-all active:scale-[0.98]"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {APPLICATION_TYPES.map((type) => {
+                    const qCount = questions.filter(q => q.appType === type).length;
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => setSelectedAppType(type)}
+                        className="group flex flex-col p-6 rounded-2xl bg-background/50 border border-border/50 hover:border-primary/50 hover:bg-card/80 transition-all text-left relative overflow-hidden h-full"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                          <div className="w-10 h-10 rounded-lg bg-card border border-border flex items-center justify-center shrink-0">
+                            <Briefcase className="w-5 h-5 text-blue" />
+                          </div>
+                          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                            {qCount} {qCount === 1 ? 'Ques' : 'Qns'}
+                          </span>
+                        </div>
+                        <h4 className="font-sans font-bold text-foreground text-lg mb-1 relative z-10">{type}</h4>
+                        <p className="text-sm text-muted-foreground mt-auto relative z-10">Manage questions for {type.toLowerCase()}</p>
+                        <div className="absolute right-4 bottom-4 translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all">
+                          <ChevronRight className="w-5 h-5 text-primary" />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h3 className="font-display text-lg font-bold text-primary mb-4">Global Form Steps (Pages)</h3>
+                <p className="text-sm text-muted-foreground mb-4">Steps are shared across all application types.</p>
+                <div className="flex flex-col md:flex-row gap-3 mb-6 relative z-10">
+                  <input
+                    value={newStep.name}
+                    onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
+                    placeholder="Step Name (e.g. Scenario)"
+                    className="w-full md:w-1/3 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <div className="flex w-full md:flex-1 gap-2">
+                    <input
+                      value={newStep.description}
+                      onChange={(e) => setNewStep({ ...newStep, description: e.target.value })}
+                      placeholder="Step Description..."
+                      className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <button
+                      onClick={addStep}
+                      className="px-4 py-3 shrink-0 botghost-btn-primary"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {steps.map((s, idx) => (
+                    <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-background/30 border border-border/20 px-4 py-4">
+                      <div className="overflow-hidden">
+                        <p className="text-sm font-bold text-foreground">Step {idx + 1}: {s.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
                       </div>
+                      <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "questions" && selectedAppType && (
+            <div
+              key="questions-detail"
+              className="space-y-6 w-full"
+            >
+              <button
+                onClick={() => setSelectedAppType(null)}
+                className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm font-medium w-full max-w-max"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back to Categories
+              </button>
+
+              <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h3 className="font-display text-xl font-bold text-primary mb-2">Add New Question ({selectedAppType})</h3>
+                <p className="text-sm text-muted-foreground mb-6">Create a new question that will only appear to applicants applying for this role.</p>
+                <div className="flex flex-col gap-4">
+                  <input
+                    value={newQ.label}
+                    onChange={(e) => setNewQ({ ...newQ, label: e.target.value })}
+                    placeholder="Question text"
+                    className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <select
+                      value={newQ.step}
+                      onChange={(e) => setNewQ({ ...newQ, step: Number(e.target.value) })}
+                      className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                    >
+                      {steps.map(s => <option key={s.id} value={s.id} className="bg-card">{s.name}</option>)}
+                    </select>
+                    <div className="flex gap-2">
+                      <select
+                        value={newQ.type}
+                        onChange={(e) => setNewQ({ ...newQ, type: e.target.value as any })}
+                        className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                      >
+                        <option value="text" className="bg-card">Short Text</option>
+                        <option value="textarea" className="bg-card">Long Text</option>
+                        <option value="boolean" className="bg-card">True / False</option>
+                      </select>
+                      <button
+                        onClick={addQuestion}
+                        className="px-6 py-3 shrink-0 botghost-btn-primary shadow-none"
+                      >
+                        Add
+                      </button>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  {/* Display Questions */}
-                  <div className="glass-card p-6 bg-[#161920] border-[#1e232b] rounded-md">
-                    <h3 className="font-display text-md font-bold text-white mb-3">Existing Questions</h3>
-                    <div className="space-y-2">
-                      {questions.filter(q => q.appType === selectedRoleForQs).length === 0 ? <p className="text-sm text-muted-foreground italic">No questions added yet.</p> : null}
-                      {questions.filter(q => q.appType === selectedRoleForQs).map((q) => (
-                        <div key={q.id} className="flex items-center justify-between rounded-md bg-[#0f1115] border border-[#1e232b] px-4 py-3">
-                          <div>
-                            <p className="text-sm font-medium text-white">{q.label}</p>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-xs bg-[#161920] px-2 py-0.5 rounded text-primary border border-[#1e232b]">{q.type}</span>
+              {/* Questions mapping for specific selected role */}
+              {steps.map((step, idx) => {
+                const stepQs = questions.filter((q) => (q.step === step.id || q.step === idx + 1) && q.appType === selectedAppType);
+                if (stepQs.length === 0) return null;
+
+                return (
+                  <div key={step.id} className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.5)" }}>
+                    <h3 className="font-display text-lg font-bold text-primary mb-4">Step: {step.name}</h3>
+                    <div className="space-y-3">
+                      {stepQs.map((q) => (
+                        <div key={q.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-background/40 border border-border/20 px-5 py-4">
+                          <div className="overflow-hidden">
+                            <p className="text-sm font-medium text-foreground whitespace-pre-wrap">{q.label}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <span className="text-xs bg-primary/10 px-2 py-0.5 rounded text-primary border border-primary/20">{q.type}</span>
                             </div>
                           </div>
                           <button
                             onClick={() => removeQuestion(q.id)}
-                            className="text-red-500 hover:bg-red-500/20 p-1.5 rounded-md transition-colors"
+                            className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10"
+                            title="Delete specific question"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -383,86 +479,62 @@ const Admin = () => {
                       ))}
                     </div>
                   </div>
-
-                  {/* Provide Step Managing within questions too for general ease */}
-                  <div className="glass-card p-6 bg-[#161920] border-[#1e232b] rounded-md mt-6">
-                    <h3 className="font-display text-lg font-bold text-white mb-4">Manage Form Steps (Pages)</h3>
-                    <div className="flex flex-col gap-3 mb-6">
-                      <div className="flex gap-3">
-                        <input
-                          value={newStep.name}
-                          onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
-                          placeholder="Step Name (e.g. Scenario)"
-                          className="w-1/3 rounded-md border border-[#1e232b] bg-[#0f1115] px-4 py-2.5 text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                        <input
-                          value={newStep.description}
-                          onChange={(e) => setNewStep({ ...newStep, description: e.target.value })}
-                          placeholder="Step Description..."
-                          className="flex-1 rounded-md border border-[#1e232b] bg-[#0f1115] px-4 py-2.5 text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                        <button
-                          onClick={addStep}
-                          className="px-4 py-2.5 rounded-md bg-[#161920] border border-[#1e232b] text-primary font-semibold hover:brightness-110 uppercase active:scale-[0.98]"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {steps.map((s, idx) => (
-                        <div key={s.id} className="flex items-center justify-between rounded-md bg-[#0f1115] border border-[#1e232b] px-4 py-3">
-                          <div>
-                            <p className="text-sm font-bold text-white">Step {idx + 1}: {s.name}</p>
-                            <p className="text-xs text-muted-foreground">{s.description}</p>
-                          </div>
-                          <button onClick={() => removeStep(s.id)} className="text-red-500 hover:bg-red-500/20 p-1.5 rounded-md transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           )}
 
           {tab === "review" && (
-            <div className="space-y-4">
-              {/* Filter Bar */}
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-                {allTypes.map(t => {
-                  const count = t === 'All' ? pending.length : pending.filter(a => a.applicationType === t).length;
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => setReviewFilter(t)}
-                      className={`px-4 py-2 rounded-md text-sm font-semibold whitespace-nowrap transition-none border ${reviewFilter === t ? 'bg-primary text-white border-primary' : 'border-[#1e232b] bg-[#161920] text-muted-foreground hover:text-white'}`}
-                    >
-                      {t}
-                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${reviewFilter === t ? 'bg-black/20 text-white' : 'bg-[#0f1115] text-muted-foreground'}`}>{count}</span>
-                    </button>
-                  );
-                })}
+            <div
+              key="review"
+              className="space-y-6 w-full"
+            >
+              {/* Review Filter Bar */}
+              <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-2 min-w-max">
+                  {["All", ...APPLICATION_TYPES].map(type => {
+                    const count = type === "All" ? pending.length : pending.filter(a => a.applicationType === type).length;
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => setReviewFilter(type)}
+                        className={`px-4 py-2 rounded-[8px] text-xs font-bold uppercase transition-all border ${reviewFilter === type
+                          ? "bg-[#161920] border-[#1e232b] text-primary"
+                          : "bg-transparent border-transparent text-muted-foreground hover:bg-[#161920] hover:border-[#1e232b]"
+                          }`}
+                      >
+                        {type} <span className="ml-1 opacity-70">({count})</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
-              {filteredApps.length === 0 ? (
-                <div className="glass-card p-12 text-center bg-[#161920] border-[#1e232b] rounded-md">
-                  <p className="text-muted-foreground text-lg">No pending applications for this filter 🎉</p>
+              <div className="space-y-4">
+                <div className="relative">
+                  {filteredPending.length === 0 ? (
+                    <div
+                      className="glass-card p-12 text-center" style={{ background: "hsl(var(--card) / 0.5)" }}
+                    >
+                      <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+                        <Check className="w-8 h-8" />
+                      </div>
+                      <p className="text-muted-foreground font-medium text-lg">No pending applications for {reviewFilter} 🎉</p>
+                    </div>
+                  ) : (
+                    filteredPending.map((app) => (
+                      <ApplicationCard
+                        key={app.id}
+                        app={app}
+                        questions={questions}
+                        onAccept={() => handleStatus(app.id, "Accepted")}
+                        onReject={() => handleStatus(app.id, "Rejected")}
+                        onDelete={() => handleDelete(app.id)}
+                      />
+                    ))
+                  )}
                 </div>
-              ) : (
-                filteredApps.map((app) => (
-                  <ApplicationCard
-                    key={app.id}
-                    app={app}
-                    questions={questions}
-                    onAccept={() => handleStatus(app.id, "Accepted")}
-                    onReject={() => handleStatus(app.id, "Rejected")}
-                    onDelete={() => handleDelete(app.id)}
-                  />
-                ))
-              )}
+              </div>
             </div>
           )}
         </div>
@@ -480,42 +552,57 @@ function ApplicationCard({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="glass-card p-8 min-h-[160px] bg-[#161920] border-[#1e232b] shadow-xl rounded-md transition-all">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-bold text-lg text-primary">{app.discordUsername}</p>
-          <p className="text-xs text-muted-foreground font-mono">
-            {app.id} • {app.applicationType} • {app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : 'Legacy'}
-          </p>
+    <div
+      className="glass-card p-6 sm:p-8 min-h-[160px] border border-primary/20 shadow-xl overflow-hidden relative"
+      style={{ background: "hsl(var(--card) / 0.9)" }}
+    >
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full pointer-events-none" />
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 relative z-10 w-full overflow-hidden">
+        <div className="overflow-hidden min-w-0">
+          <p className="font-sans text-xl font-bold text-foreground mb-1 truncate">{app.discordUsername}</p>
+          <div className="flex flex-wrap gap-2 text-xs font-mono mb-2">
+            <span className="px-2 py-0.5 rounded bg-background/50 text-muted-foreground border border-border/50 truncate">ID: {app.id.substring(0, 8)}</span>
+            <span className="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{app.applicationType}</span>
+            <span className="px-2 py-0.5 rounded bg-background/50 text-muted-foreground border border-border/50">{new Date(app.submittedAt).toLocaleDateString()}</span>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={onAccept} className="px-3 py-1.5 rounded-md bg-green-500/20 text-green-500 hover:bg-green-500/30 transition-colors uppercase font-semibold text-xs border border-green-500/30" title="Accept">
-            <Check className="w-4 h-4 sm:mr-1 inline-block" /> <span className="hidden sm:inline">Accept</span>
+        <div className="flex gap-2 sm:shrink-0 w-full sm:w-auto overflow-hidden">
+          <button onClick={onAccept} className="flex-1 sm:flex-none p-3 rounded-xl bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald/20 transition-all flex justify-center items-center" title="Accept">
+            <Check className="w-5 h-5" />
           </button>
-          <button onClick={onReject} className="px-3 py-1.5 rounded-md bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors uppercase font-semibold text-xs border border-red-500/30" title="Reject">
-            <X className="w-4 h-4 sm:mr-1 inline-block" /> <span className="hidden sm:inline">Reject</span>
+          <button onClick={onReject} className="flex-1 sm:flex-none p-3 rounded-xl bg-crimson/10 border border-crimson/20 text-crimson hover:bg-crimson/20 transition-all flex justify-center items-center" title="Reject">
+            <X className="w-5 h-5" />
           </button>
-          <button onClick={onDelete} className="p-1.5 rounded-md bg-[#0f1115] text-muted-foreground hover:bg-[#1e232b] transition-colors border border-[#1e232b]" title="Delete">
-            <Trash2 className="w-4 h-4" />
+          <button onClick={onDelete} className="p-3 rounded-xl bg-background/50 border border-border/50 text-muted-foreground hover:bg-background/80 transition-all flex justify-center items-center" title="Delete">
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       </div>
-      <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary/80 mt-3 hover:text-primary transition-colors uppercase font-semibold">
-        {expanded ? "Hide answers ▲" : "View answers ▼"}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-4 py-2 rounded-lg bg-background/30 hover:bg-background/50 transition-colors border border-border/20 z-10 relative"
+      >
+        {expanded ? "Collapse Responses" : "Expand Responses"}
       </button>
-      {expanded && (
-        <div className="mt-4 space-y-3 pt-4 border-t border-[#1e232b]">
-          {Object.entries(app.answers || {}).map(([qId, answer]) => {
-            const q = questions.find((q) => q.id === qId);
-            return (
-              <div key={qId} className="rounded-md bg-[#0f1115] border border-[#1e232b] p-3">
-                <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase">{q?.label || qId}</p>
-                <p className="text-sm text-white font-medium">{answer}</p>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div className="relative w-full">
+        {expanded && (
+          <div
+            className="overflow-hidden space-y-3 relative z-10"
+          >
+            <div className="pt-4 space-y-3">
+              {Object.entries(app.answers).map(([qId, answer]) => {
+                const q = questions.find((q) => q.id === qId);
+                return (
+                  <div key={qId} className="rounded-xl bg-background/30 border border-border/20 p-4">
+                    <p className="text-xs font-semibold text-primary/70 mb-2 uppercase tracking-wide">{q?.label || qId}</p>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{answer}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
