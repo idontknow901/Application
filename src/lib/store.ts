@@ -137,6 +137,7 @@ export const store = {
     await setDoc(doc(db, "settings", "questions"), { items });
   },
   addApplication: async (app: Omit<Application, 'id' | 'status' | 'submittedAt'>): Promise<Application> => {
+    console.log("📝 Preparing to submit application...", app.discordUsername);
     const id = 'APP-' + Date.now().toString(36).toUpperCase();
     const newApp: Application = {
       ...app,
@@ -144,8 +145,16 @@ export const store = {
       status: 'Pending',
       submittedAt: new Date().toISOString(),
     };
-    await setDoc(doc(db, "applications", id), newApp);
-    return newApp;
+
+    try {
+      console.log("🔥 Writing to Firestore...");
+      await setDoc(doc(db, "applications", id), newApp);
+      console.log("✅ Firestore write successful! ID:", id);
+      return newApp;
+    } catch (err) {
+      console.error("❌ Firestore Write Failed:", err);
+      throw err;
+    }
   },
   updateApplicationStatus: async (id: string, status: 'Accepted' | 'Rejected', apps: Application[], config: AppConfig) => {
     await updateDoc(doc(db, "applications", id), { status });
