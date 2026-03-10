@@ -59,32 +59,33 @@ const Track = () => {
     <PageWrapper>
       <div className="container mx-auto px-4 max-w-xl">
         <h1
-          className="font-display text-4xl font-bold text-center mb-3 text-bg-primary"
+          className="font-display text-3xl sm:text-4xl font-bold text-center mb-3 text-bg-primary"
         >
           Track Your Application
         </h1>
-        <p className="text-center text-muted-foreground mb-10">
+        <p className="text-center text-muted-foreground mb-6 sm:mb-10 text-sm sm:text-base">
           Enter your Application ID or Discord Username
         </p>
 
         <div
-          className="glass-card p-8 bg-card/40"
+          className="glass-card p-5 sm:p-8 bg-card/40"
         >
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="APP-XXXXXX or username"
-              className="flex-1 rounded-lg border border-border/30 bg-background/10 px-4 py-3 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-sm"
+              className="flex-1 rounded-lg border border-border/30 bg-background/10 px-4 py-3 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-sm text-sm sm:text-base"
             />
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="px-5 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:scale-105 transition-transform disabled:opacity-50"
+              className="px-5 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:scale-105 transition-transform disabled:opacity-50 flex items-center justify-center sm:w-auto w-full"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-5 h-5 mr-2 sm:mr-0" />
+              <span className="sm:hidden">Search</span>
             </button>
           </div>
 
