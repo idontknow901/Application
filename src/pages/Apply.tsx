@@ -89,28 +89,46 @@ const Apply = () => {
     }
 
     try {
-      // Intelligent username search
-      let detectedUsername = answers["q1"] || "";
-      if (!detectedUsername || !detectedUsername.trim()) {
-        const keywords = ["username", "discord", "name", "info", "roblox", "id", "tag"];
-        // Search in all questions belonging to this role or common steps
-        const userQ = questions.find(q => 
-          keywords.some(k => q.label.toLowerCase().includes(k)) && 
+      // Universal Username Detection
+      // Logic: 
+      // 1. Try questions in Step 1 (usually where name/discord is asked)
+      // 2. Try specific keywords across any question
+      // 3. Fallback to first text answer
+      let detectedUsername = "";
+      
+      const prioritizedKeywords = ["roblox", "discord", "username", "name", "id", "tag"];
+      
+      // Step 1 check first (most accurate for names)
+      const step1Qs = questions.filter(q => 
+        (q.step === 1) && 
+        (q.appType === selectedAppType || q.appType === 'Common' || !q.appType)
+      );
+
+      // Look for a keyword-matching question in Step 1
+      const bestQ = step1Qs.find(q => 
+        prioritizedKeywords.some(k => q.label.toLowerCase().includes(k)) && 
+        answers[q.id]?.trim()
+      );
+      
+      if (bestQ) {
+        detectedUsername = answers[bestQ.id];
+      } else {
+        // Look for any keyword-matching question anywhere
+        const anyMatchQ = questions.find(q => 
+          prioritizedKeywords.some(k => q.label.toLowerCase().includes(k)) && 
+          answers[q.id]?.trim() &&
           (q.appType === selectedAppType || q.appType === 'Common' || !q.appType)
         );
-        if (userQ) detectedUsername = answers[userQ.id];
+        detectedUsername = anyMatchQ ? answers[anyMatchQ.id] : "";
+      }
+
+      // Final fallback: First non-empty text field found anywhere
+      if (!detectedUsername.trim()) {
+        const firstValueId = Object.keys(answers).find(id => answers[id]?.trim().length > 0);
+        if (firstValueId) detectedUsername = answers[firstValueId];
       }
       
-      // Secondary fallback: if still empty, take the first short text answer we find
-      if (!detectedUsername || !detectedUsername.trim()) {
-        const firstTextId = Object.keys(answers).find(id => {
-          const q = questions.find(q => q.id === id);
-          return q?.type === 'text' && answers[id].trim().length > 0;
-        });
-        if (firstTextId) detectedUsername = answers[firstTextId];
-      }
-      
-      const username = (detectedUsername?.trim()) || "Anonymous";
+      const username = detectedUsername.trim() || Object.values(answers)[0] || "Anonymous";
       
       const app = await store.addApplication({
         discordUsername: username,
