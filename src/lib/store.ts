@@ -86,22 +86,17 @@ export const notifyDiscord = async (type: 'open' | 'results' | 'logs', payload: 
   }
 };
 
-export const logAdminAction = async (action: string, details: string, adminName: string = "Administrator") => {
+export const logAdminAction = async (action: string, details: string, adminName: string = "Administrator", messageId?: string, onNewMessageId?: (id: string) => void) => {
   const payload = {
     embeds: [{
-      title: "🛠️ Admin Action Logged",
-      fields: [
-        { name: "User", value: adminName, inline: true },
-        { name: "Action", value: action, inline: true },
-        { name: "Time", value: new Date().toLocaleString(), inline: true },
-        { name: "Details", value: details }
-      ],
+      title: "🛠️ Admin Activity Log",
+      description: `**Current Session:** ${adminName}\n**Started:** ${new Date().toLocaleString()}\n\n${details}`,
       color: 0x3b82f6,
       timestamp: new Date().toISOString(),
       footer: { text: "EROI Security Logs" }
     }]
   };
-  await notifyDiscord('logs', payload);
+  await notifyDiscord('logs', payload, messageId, onNewMessageId);
 };
 
 export function useAppStore(isAdmin = false) {
@@ -194,9 +189,10 @@ export const store = {
 
       notifyDiscord('results', {
         embeds: [{
-          title: `Application ${status}`,
+          title: `Application ${status}: ${id}`,
           description: `**${apps[idx].discordUsername}** has been **${status.toLowerCase()}** for the **${apps[idx].applicationType}** role.\n\n**Current Stats:**\n✅ Accepted: ${accepted}\n❌ Rejected: ${rejected}\n⏳ Pending: ${pending}`,
           color: status === 'Accepted' ? 0x00ff00 : 0xff0000,
+          footer: { text: `Application ID: ${id}` }
         }]
       });
 

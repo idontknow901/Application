@@ -113,7 +113,7 @@ const Apply = () => {
 
   return (
     <PageWrapper>
-      <div className="container mx-auto px-4 sm:px-6 w-full max-w-4xl overflow-x-hidden">
+      <div className="container mx-auto px-4 sm:px-6 w-full max-w-5xl overflow-x-hidden">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -162,12 +162,12 @@ const Apply = () => {
                   const active = currentStep === step;
                   const done = currentStep > step;
                   return (
-                    <div key={stepData.id} className="flex items-center gap-4 sm:gap-8 shrink-0">
+                    <div key={stepData.id} className="flex items-center gap-2 sm:gap-4 shrink-0">
                       <div className="flex flex-col items-center gap-3">
                         <motion.div
                           animate={active ? { scale: [1, 1.1, 1], boxShadow: ["0 0 0px hsla(352,82%,62%,0)", "0 0 20px hsla(352,82%,62%,0.4)", "0 0 0px hsla(352,82%,62%,0)"] } : {}}
                           transition={{ duration: 2, repeat: Infinity }}
-                          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-sm sm:text-base font-bold transition-all duration-500 border-2 ${active
+                          className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-500 border-2 ${active
                             ? "bg-primary text-primary-foreground border-primary shadow-lg"
                             : done
                               ? "bg-emerald/20 text-emerald border-emerald/50"
@@ -181,7 +181,7 @@ const Apply = () => {
                         </span>
                       </div>
                       {i < activeSteps.length - 1 && (
-                        <div className={`w-8 sm:w-16 h-[2px] rounded-full transition-all duration-700 -mt-8 ${done ? "bg-emerald/50" : "bg-border/20"}`} />
+                        <div className={`w-6 sm:w-12 h-[2px] rounded-full transition-all duration-700 -mt-8 ${done ? "bg-emerald/50" : "bg-border/20"}`} />
                       )}
                     </div>
                   );
@@ -230,7 +230,7 @@ const Apply = () => {
                         <textarea
                           value={answers[q.id] || ""}
                           onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                          className="w-full rounded-2xl border border-border/30 bg-background/50 px-6 py-5 text-foreground placeholder-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none min-h-[160px] backdrop-blur-md transition-all text-sm sm:text-base leading-relaxed shadow-inner"
+                          className="w-full rounded-xl border border-border/30 bg-background/50 px-5 py-3.5 text-foreground placeholder-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none min-h-[140px] backdrop-blur-md transition-all text-sm sm:text-base leading-relaxed shadow-inner"
                           placeholder="Type your detailed answer here..."
                         />
                       ) : q.type === "select" ? (
@@ -238,7 +238,7 @@ const Apply = () => {
                           <select
                             value={answers[q.id] || ""}
                             onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                            className="w-full rounded-2xl border border-border/30 bg-background/50 px-6 py-5 text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-md transition-all text-sm sm:text-base cursor-pointer shadow-inner"
+                            className="w-full rounded-xl border border-border/30 bg-background/50 px-5 py-3.5 text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-md transition-all text-sm sm:text-base cursor-pointer shadow-inner"
                           >
                             <option value="" disabled className="bg-card text-muted-foreground">Select an option...</option>
                             {q.options?.map((o) => (
@@ -265,7 +265,7 @@ const Apply = () => {
                           type="text"
                           value={answers[q.id] || ""}
                           onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                          className="w-full rounded-2xl border border-border/30 bg-background/50 px-6 py-5 text-foreground placeholder-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-md transition-all text-sm sm:text-base shadow-inner"
+                          className="w-full rounded-xl border border-border/30 bg-background/50 px-5 py-3.5 text-foreground placeholder-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-md transition-all text-sm sm:text-base shadow-inner"
                           placeholder="Type your answer here..."
                         />
                       )}

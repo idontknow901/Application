@@ -15,7 +15,7 @@ const Admin = () => {
   const [tab, setTab] = useState<"dashboard" | "questions" | "review">("dashboard");
   const [selectedAppType, setSelectedAppType] = useState<string | null>(null);
   const [reviewFilter, setReviewFilter] = useState<string>("All");
-  const [adminName, setAdminName] = useState(() => sessionStorage.getItem("epic-rail-admin-name") || "Administrator");
+  const [adminName, setAdminName] = useState(() => sessionStorage.getItem("epic-rail-admin-name") || "");
 
   const { config, applications, questions, steps, loading } = useAppStore(true);
 
@@ -23,6 +23,37 @@ const Admin = () => {
   const [newQ, setNewQ] = useState<{ label: string; step: number; type: 'text' | 'textarea' | 'select' | 'boolean' }>({
     label: "", step: 1, type: "text"
   });
+
+  const [logSessionId, setLogSessionId] = useState(() => sessionStorage.getItem("epic-rail-log-session-id") || "");
+  const [logHistory, setLogHistory] = useState<string[]>(() => {
+    const saved = sessionStorage.getItem("epic-rail-log-history");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const triggerLog = async (action: string, details: string) => {
+    const time = new Date().toLocaleTimeString();
+    const entry = `• [${time}] **${action}**: ${details}`;
+    const newHistory = [...logHistory, entry];
+    setLogHistory(newHistory);
+    sessionStorage.setItem("epic-rail-log-history", JSON.stringify(newHistory));
+
+    await logAdminAction(
+      "Activity",
+      newHistory.join('\n'),
+      adminName || "Administrator",
+      logSessionId,
+      (id) => {
+        setLogSessionId(id);
+        sessionStorage.setItem("epic-rail-log-session-id", id);
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (authenticated && !logSessionId && adminName) {
+      triggerLog("Admin Joined", "Panel accessed and session started.");
+    }
+  }, [authenticated]);
 
   const handleLogin = async () => {
     try {
@@ -36,6 +67,7 @@ const Admin = () => {
         store.setAdminAuth(true);
         setAuthenticated(true);
         toast.success("Welcome back, Admin!");
+        // triggerLog will be handled by useEffect
       } else {
         toast.error("Invalid password");
       }
@@ -81,7 +113,7 @@ const Admin = () => {
     await store.setConfig(next);
     toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
     syncDiscordStatus(next);
-    logAdminAction("Toggle Recruitment", `Global recruitment status changed to **${next.recruitmentOpen ? "OPEN" : "CLOSED"}**`, adminName);
+    triggerLog("Toggle Recruitment", `Global recruitment status changed to **${next.recruitmentOpen ? "OPEN" : "CLOSED"}**`);
   };
 
   const toggleAppType = async (type: ApplicationType) => {
@@ -95,7 +127,7 @@ const Admin = () => {
     await store.setConfig(updated);
     toast.success(`${type} applications ${isOpening ? "opened" : "closed"}`);
     syncDiscordStatus(updated);
-    logAdminAction("Toggle Role Recruitment", `Recruitment for **${type}** was **${isOpening ? "OPENED" : "CLOSED"}**`, adminName);
+    triggerLog("Toggle Role Recruitment", `Recruitment for **${type}** was **${isOpening ? "OPENED" : "CLOSED"}**`);
   };
 
   const updateStatusImage = async (url: string) => {
@@ -103,12 +135,14 @@ const Admin = () => {
     await store.setConfig(updated);
     toast.success("Status embed image updated");
     syncDiscordStatus(updated);
-    logAdminAction("Update Status Image", `Admin updated the recruitment status image URL to: ${url}`, adminName);
+    triggerLog("Update Status Image", `Admin updated the recruitment status image URL to: ${url}`);
   };
 
   const handleStatus = async (id: string, status: "Accepted" | "Rejected") => {
     await store.updateApplicationStatus(id, status, applications, config);
     toast.success(`Application ${status.toLowerCase()}`);
+    const app = applications.find(a => a.id === id);
+    triggerLog(`Application ${status}`, `Admin ${status.toLowerCase()}ed application **${id}** (${app?.discordUsername || 'Unknown'})`);
   };
 
   const handleDelete = async (id: string) => {
@@ -130,7 +164,7 @@ const Admin = () => {
     store.setQuestions(updated);
     setNewQ({ label: "", step: steps[0]?.id || 1, type: "text" });
     toast.success("Question added");
-    logAdminAction("Question Added", `Added new question to **${selectedAppType}**: "${q.label}"`, adminName);
+    triggerLog("Question Added", `Added new question to **${selectedAppType}**: "${q.label}"`);
   };
 
   const removeQuestion = (id: string) => {
@@ -138,7 +172,7 @@ const Admin = () => {
     const updated = questions.filter((q) => q.id !== id);
     store.setQuestions(updated);
     toast.success("Question removed");
-    if (q) logAdminAction("Question Removed", `Removed question from **${q.appType}**: "${q.label}"`, adminName);
+    if (q) triggerLog("Question Removed", `Removed question from **${q.appType}**: "${q.label}"`);
   };
 
   const addStep = () => {
@@ -157,7 +191,7 @@ const Admin = () => {
     
     setNewStep({ name: "", description: "", appType: selectedAppType as ApplicationType });
     toast.success("Step added");
-    logAdminAction("Step Added", `Added new step: **${s.name}** to **${selectedAppType}**`, adminName);
+    triggerLog("Step Added", `Added new step: **${s.name}** to **${selectedAppType}**`);
   };
 
   const removeStep = (id: number) => {
@@ -172,7 +206,7 @@ const Admin = () => {
     }
     
     toast.success("Step removed");
-    if (s) logAdminAction("Step Removed", `Removed step: **${s.name}**`, adminName);
+    if (s) triggerLog("Step Removed", `Removed step: **${s.name}**`);
   };
 
   // Update newQ and newStep when selectedAppType changes
@@ -233,7 +267,14 @@ const Admin = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
           <h1 className="font-display text-3xl font-bold text-primary drop-shadow-sm text-center sm:text-left w-full sm:w-auto">Admin Panel</h1>
           <button
-            onClick={() => { store.setAdminAuth(false); setAuthenticated(false); }}
+            onClick={() => { 
+              store.setAdminAuth(false); 
+              setAuthenticated(false);
+              sessionStorage.removeItem("epic-rail-log-session-id");
+              sessionStorage.removeItem("epic-rail-log-history");
+              setLogSessionId("");
+              setLogHistory([]);
+            }}
             className="flex items-center gap-2 px-4 py-2 botghost-btn !text-red-400 !border-red-500/30 w-full sm:w-auto justify-center"
           >
             <LogOut className="w-4 h-4" /> Logout
@@ -251,12 +292,12 @@ const Admin = () => {
               <button
                 key={t.id}
                 onClick={() => { setTab(t.id); setSelectedAppType(null); }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-[8px] text-sm font-bold uppercase transition-all border ${tab === t.id
+                className={`flex items-center gap-2 px-3 py-2 rounded-[8px] text-[11px] font-bold uppercase transition-all border ${tab === t.id
                   ? "bg-[#161920] text-primary border-[#1e232b]"
                   : "bg-transparent text-muted-foreground hover:bg-[#161920] border-transparent hover:border-[#1e232b]"
                   }`}
               >
-                <t.icon className="w-4 h-4" /> {t.label}
+                <t.icon className="w-3.5 h-3.5" /> {t.label}
               </button>
             ))}
           </div>
@@ -336,7 +377,7 @@ const Admin = () => {
                       onClick={async () => {
                         await store.clearResults(applications);
                         toast.success("Results cleared — only pending applications remain");
-                        logAdminAction("Clear Results", "Admin cleared all accepted/rejected applications from the results page.", adminName);
+                        triggerLog("Clear Results", "Admin cleared all accepted/rejected applications from the results page.");
                       }}
                       className="flex items-center gap-2 px-5 py-3 botghost-btn !text-red-400 !border-red-500/30 w-full sm:w-auto justify-center"
                     >
@@ -349,7 +390,7 @@ const Admin = () => {
                       onClick={async () => {
                         await store.syncSettings();
                         toast.success("Settings synchronized with database");
-                        logAdminAction("Sync Database", "Admin re-synchronized the database with default settings.", adminName);
+                        triggerLog("Sync Database", "Admin re-synchronized the database with default settings.");
                       }}
                       className="flex items-center gap-2 px-5 py-3 botghost-btn !text-emerald-400 !border-emerald-500/30 w-full sm:w-auto justify-center"
                     >
@@ -462,62 +503,61 @@ const Admin = () => {
                 <ArrowLeft className="w-4 h-4" /> Back to Categories
               </button>
 
-              <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
-                <h3 className="font-display text-xl font-bold text-primary mb-4">Application Form Steps (Pages)</h3>
-                <p className="text-sm text-muted-foreground mb-4">Configure the pages of your application for {selectedAppType}.</p>
-                <div className="flex flex-col gap-3 mb-6 relative z-10">
-                  <div className="flex flex-col md:flex-row gap-3">
+              <div className="glass-card p-5" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h3 className="font-display text-lg font-bold text-primary mb-2">Form Steps (Pages)</h3>
+                <p className="text-[11px] text-muted-foreground mb-4">Manage pages for {selectedAppType}.</p>
+                <div className="flex flex-col gap-3 mb-4 relative z-10 font-bold">
+                  <div className="flex flex-col md:flex-row gap-2">
                     <input
                       value={newStep.name}
                       onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
-                      placeholder="Step Name (e.g. Scenario)"
-                      className="w-full md:w-1/3 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      placeholder="Step Name"
+                      className="w-full md:w-1/3 rounded-lg border border-border/30 bg-background/50 px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                     <input
                       value={newStep.description}
                       onChange={(e) => setNewStep({ ...newStep, description: e.target.value })}
-                      placeholder="Step Description..."
-                      className="w-full md:flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      placeholder="Description..."
+                      className="w-full md:flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                     <button
                       onClick={addStep}
-                      className="px-6 py-3 shrink-0 botghost-btn-primary"
+                      className="px-4 py-2 shrink-0 botghost-btn-primary text-sm"
                     >
-                      <Plus className="w-5 h-5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5 mt-2">
                   {steps.filter(s => s.appType === selectedAppType).map((s) => (
-                    <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-primary/5 border border-primary/20 px-4 py-4">
+                    <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
                       <div className="overflow-hidden">
-                        <p className="text-sm font-bold text-foreground">Step: {s.name}</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{s.name}</p>
                       </div>
-                      <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
-                        <Trash2 className="w-4 h-4" />
+                      <button onClick={() => removeStep(s.id)} className="shrink-0 text-red-400 hover:bg-red-500/20 p-1.5 rounded transition-colors bg-red-500/10">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
-                <h3 className="font-display text-xl font-bold text-primary mb-2">Add New Question</h3>
-                <p className="text-sm text-muted-foreground mb-6">Create questions for {selectedAppType}. Each question must belong to a step above.</p>
-                <div className="flex flex-col gap-4">
+              <div className="glass-card p-5" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h3 className="font-display text-lg font-bold text-primary mb-2">Add New Question</h3>
+                <p className="text-[11px] text-muted-foreground mb-4">Create questions for {selectedAppType}. Each question must belong to a step above.</p>
+                <div className="flex flex-col gap-3">
                   <input
                     value={newQ.label}
                     onChange={(e) => setNewQ({ ...newQ, label: e.target.value })}
                     placeholder="Question text"
-                    className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <select
                       value={newQ.step}
                       onChange={(e) => setNewQ({ ...newQ, step: Number(e.target.value) })}
-                      className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                      className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
                     >
                       <option value="1" disabled={steps.some(s => s.id === 1)}>Select a step...</option>
                       {steps.filter(s => s.appType === selectedAppType).map(s => <option key={s.id} value={s.id} className="bg-card">{s.name}</option>)}
@@ -526,7 +566,7 @@ const Admin = () => {
                       <select
                         value={newQ.type}
                         onChange={(e) => setNewQ({ ...newQ, type: e.target.value as any })}
-                        className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                        className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
                       >
                         <option value="text" className="bg-card">Short Text</option>
                         <option value="textarea" className="bg-card">Long Text</option>
@@ -534,9 +574,9 @@ const Admin = () => {
                       </select>
                       <button
                         onClick={addQuestion}
-                        className="px-6 py-3 shrink-0 botghost-btn-primary shadow-none"
+                        className="px-5 py-2.5 shrink-0 botghost-btn-primary shadow-none text-sm"
                       >
-                        Add Question
+                        Add
                       </button>
                     </div>
                   </div>
