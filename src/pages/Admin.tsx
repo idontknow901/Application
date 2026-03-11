@@ -64,6 +64,12 @@ const Admin = () => {
       });
 
       if (res.ok) {
+        // Reset log session on fresh login
+        sessionStorage.removeItem("epic-rail-log-session-id");
+        sessionStorage.removeItem("epic-rail-log-history");
+        setLogSessionId("");
+        setLogHistory([]);
+
         store.setAdminAuth(true);
         setAuthenticated(true);
         toast.success("Welcome back, Admin!");
@@ -76,7 +82,11 @@ const Admin = () => {
     }
   };
 
+  const [isSyncing, setIsSyncing] = useState(false);
   const syncDiscordStatus = async (updatedConfig: typeof config) => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    
     const isGlobalOpen = updatedConfig.recruitmentOpen;
     const openTypes = updatedConfig.openApplicationTypes || [];
     const messageId = updatedConfig.discordWebhookMessageIdOpen;
@@ -85,7 +95,12 @@ const Admin = () => {
       const isOpen = isGlobalOpen && openTypes.includes(type);
       const circle = isOpen ? "🟢" : "🔴";
       const status = isOpen ? "**OPEN**" : "**CLOSED**";
-      return `•  ${circle} **${type}**\n      •  Status: ${status}`;
+      
+      // Find the first step for this role
+      const firstStep = steps.filter(s => s.appType === type)[0];
+      const stepText = firstStep ? `\n      •  Starting Step: **${firstStep.name}**` : "";
+      
+      return `•  ${circle} **${type}**\n      •  Status: ${status}${stepText}`;
     }).join('\n\n');
 
     const payload = {
@@ -101,10 +116,14 @@ const Admin = () => {
       }]
     };
 
-    await notifyDiscord('open', payload, messageId, async (id) => {
-      // If we got a new ID, save it to the database immediately
-      await store.setConfig({ ...updatedConfig, discordWebhookMessageIdOpen: id });
-    });
+    try {
+      await notifyDiscord('open', payload, messageId, async (id) => {
+        // If we got a new ID, save it to the database immediately
+        await store.setConfig({ ...updatedConfig, discordWebhookMessageIdOpen: id });
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const toggleRecruitment = async () => {

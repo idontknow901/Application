@@ -85,9 +85,17 @@ const Apply = () => {
     }
 
     try {
+      // Intelligent username search
+      let detectedUsername = answers["q1"] || "";
+      if (!detectedUsername) {
+        // Find queston with 'username' in label
+        const userQ = questions.find(q => q.label.toLowerCase().includes("username") && q.appType === selectedAppType);
+        if (userQ) detectedUsername = answers[userQ.id];
+      }
+      
       const app = await store.addApplication({
-        discordUsername: answers["q1"] || "",
-        discordUserId: answers["q2"] || "",
+        discordUsername: (detectedUsername || "Anonymous").trim(),
+        discordUserId: answers["q2"] || "Not Provided",
         applicationType: selectedAppType as ApplicationType,
         answers,
       });
