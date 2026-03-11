@@ -123,16 +123,21 @@ const Admin = () => {
     };
 
     try {
-      console.log("🔄 Syncing Discord status. ID:", messageId);
-      await notifyDiscord('open', payload, messageId, async (id) => {
+      const currentId = statusMessageIdRef.current || messageId;
+      console.log(`🔄 Attempting to update Discord. Target ID: ${currentId || "NONE (will create)"}`);
+
+      await notifyDiscord('open', payload, currentId, async (id) => {
         if (id && id !== statusMessageIdRef.current) {
-          console.log("📝 Captured New Status ID:", id);
+          console.log("✅ New message created and ID captured:", id);
           statusMessageIdRef.current = id;
+          // IMPORTANT: Update Firestore immediately so the ID persists across refreshes
           await store.setConfig({ ...updatedConfig, discordWebhookMessageIdOpen: id });
+        } else {
+          console.log("📝 Existing message patched successfully.");
         }
       });
     } catch (err) {
-      console.error("Sync error:", err);
+      console.error("❌ Sync failed in Admin component:", err);
     } finally {
       isSyncingRef.current = false;
     }
