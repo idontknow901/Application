@@ -138,11 +138,10 @@ const Admin = () => {
     triggerLog("Update Status Image", `Admin updated the recruitment status image URL to: ${url}`);
   };
 
-  const handleStatus = async (id: string, status: "Accepted" | "Rejected") => {
-    await store.updateApplicationStatus(id, status, applications, config);
+  const handleStatus = async (app: Application, status: "Accepted" | "Rejected") => {
+    await store.updateApplicationStatus(app.id, status, applications);
     toast.success(`Application ${status.toLowerCase()}`);
-    const app = applications.find(a => a.id === id);
-    triggerLog(`Application ${status}`, `Admin ${status.toLowerCase()}ed application **${id}** (${app?.discordUsername || 'Unknown'})`);
+    triggerLog(`Application ${status}`, `Admin ${status.toLowerCase()}ed application **${app.id}** (${app.discordUsername})`);
   };
 
   const handleDelete = async (id: string) => {
@@ -659,8 +658,8 @@ const Admin = () => {
                         key={app.id}
                         app={app}
                         questions={questions}
-                        onAccept={() => handleStatus(app.id, "Accepted")}
-                        onReject={() => handleStatus(app.id, "Rejected")}
+                        onAccept={() => handleStatus(app, "Accepted")}
+                        onReject={() => handleStatus(app, "Rejected")}
                         onDelete={() => handleDelete(app.id)}
                       />
                     ))

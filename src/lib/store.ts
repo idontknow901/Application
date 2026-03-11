@@ -75,7 +75,7 @@ export const notifyDiscord = async (type: 'open' | 'results' | 'logs', payload: 
       body: JSON.stringify({ type, payload, messageId }),
     });
 
-    if (res.ok && type === 'open' && !messageId && onNewMessageId) {
+    if (res.ok && (type === 'open' || type === 'logs') && !messageId && onNewMessageId) {
       const data = await res.json();
       if (data && data.id) {
         onNewMessageId(data.id);
@@ -146,7 +146,6 @@ export const store = {
   setAdminAuth: (val: boolean) => {
     if (val) {
       sessionStorage.setItem('epic-rail-admin-auth', 'true');
-      logAdminAction("Admin Login", "An admin has logged into the panel.");
     }
     else sessionStorage.removeItem('epic-rail-admin-auth');
   },
@@ -179,25 +178,23 @@ export const store = {
       throw err;
     }
   },
-  updateApplicationStatus: async (id: string, status: 'Accepted' | 'Rejected', apps: Application[], config: AppConfig) => {
+  updateApplicationStatus: async (id: string, status: 'Accepted' | 'Rejected', apps: Application[]) => {
     await updateDoc(doc(db, "applications", id), { status });
-    const idx = apps.findIndex(a => a.id === id);
-    if (idx !== -1) {
-      const accepted = apps.filter(a => a.status === 'Accepted').length + (status === 'Accepted' ? 1 : 0) - (apps[idx].status === 'Accepted' ? 1 : 0);
-      const rejected = apps.filter(a => a.status === 'Rejected').length + (status === 'Rejected' ? 1 : 0) - (apps[idx].status === 'Rejected' ? 1 : 0);
-      const pending = apps.filter(a => a.status === 'Pending').length - (apps[idx].status === 'Pending' ? 1 : 0);
+    const app = apps.find(a => a.id === id);
+    if (!app) return;
 
-      notifyDiscord('results', {
-        embeds: [{
-          title: `Application ${status}: ${id}`,
-          description: `**${apps[idx].discordUsername}** has been **${status.toLowerCase()}** for the **${apps[idx].applicationType}** role.\n\n**Current Stats:**\n✅ Accepted: ${accepted}\n❌ Rejected: ${rejected}\n⏳ Pending: ${pending}`,
-          color: status === 'Accepted' ? 0x00ff00 : 0xff0000,
-          footer: { text: `Application ID: ${id}` }
-        }]
-      });
+    const accepted = apps.filter(a => a.status === 'Accepted').length + (status === 'Accepted' ? 1 : 0) - (app.status === 'Accepted' ? 1 : 0);
+    const rejected = apps.filter(a => a.status === 'Rejected').length + (status === 'Rejected' ? 1 : 0) - (app.status === 'Rejected' ? 1 : 0);
+    const pending = apps.filter(a => a.status === 'Pending').length - (app.status === 'Pending' ? 1 : 0);
 
-      logAdminAction(`Application ${status}`, `Admin ${status.toLowerCase()}ed application **${id}** (${apps[idx].discordUsername})`);
-    }
+    notifyDiscord('results', {
+      embeds: [{
+        title: `Application ${status}: ${id}`,
+        description: `**${app.discordUsername}** has been **${status.toLowerCase()}** for the **${app.applicationType}** role.\n\n**Current Stats:**\n✅ Accepted: ${accepted}\n❌ Rejected: ${rejected}\n⏳ Pending: ${pending}`,
+        color: status === 'Accepted' ? 0x00ff00 : 0xff0000,
+        footer: { text: `Application ID: ${id}` }
+      }]
+    });
   },
   deleteApplication: async (id: string) => {
     await deleteDoc(doc(db, "applications", id));

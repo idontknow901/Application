@@ -28,27 +28,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let finalUrl = url;
         let method = 'POST';
 
-        if (type === 'open' && messageId) {
+        if ((type === 'open' || type === 'logs') && messageId) {
             finalUrl = `${url}/messages/${messageId}`;
             method = 'PATCH';
-        } else if (type === 'open') {
-            finalUrl = `${url}?wait=true`;
+        } else {
+            // Always wait for the ID on initial POST for these types
+            if (type === 'open' || type === 'logs') {
+                finalUrl = `${url}?wait=true`;
+            }
         }
 
-        const response = await fetch(finalUrl, {
+        let response = await fetch(finalUrl, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
 
+        // Robust Fallback: If message was deleted (404) during a PATCH, create a new one instead
+        if (!response.ok && response.status === 404 && method === 'PATCH') {
+            console.warn(`Message ${messageId} not found, creating new message for ${type}...`);
+            finalUrl = `${url}?wait=true`;
+            response = await fetch(finalUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+        }
+
         if (!response.ok) {
             const errText = await response.text();
-            console.error(`Discord API Error [${response.status}]:`, errText);
             res.status(response.status).json({ error: errText });
             return;
         }
 
-        // Handle possible empty or non-JSON responses
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
             const data = await response.json();
