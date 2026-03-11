@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 
 import {
   Lock, ToggleLeft, ToggleRight, Check, X, Trash2, Plus, LogOut,
@@ -29,6 +29,14 @@ const Admin = () => {
     const saved = sessionStorage.getItem("epic-rail-log-history");
     return saved ? JSON.parse(saved) : [];
   });
+
+  const statusMessageIdRef = useRef<string>("");
+
+  useEffect(() => {
+    if (config.discordWebhookMessageIdOpen) {
+      statusMessageIdRef.current = config.discordWebhookMessageIdOpen;
+    }
+  }, [config.discordWebhookMessageIdOpen]);
 
   const triggerLog = async (action: string, details: string) => {
     const time = new Date().toLocaleTimeString();
@@ -81,23 +89,21 @@ const Admin = () => {
       toast.error("Login service unavailable");
     }
   };
-
-  const [isSyncing, setIsSyncing] = useState(false);
+  const isSyncingRef = useRef(false);
   const syncDiscordStatus = async (updatedConfig: typeof config) => {
-    if (isSyncing) return;
-    setIsSyncing(true);
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     
     const isGlobalOpen = updatedConfig.recruitmentOpen;
     const openTypes = updatedConfig.openApplicationTypes || [];
-    const messageId = updatedConfig.discordWebhookMessageIdOpen;
+    const messageId = statusMessageIdRef.current || updatedConfig.discordWebhookMessageIdOpen;
 
     const statusText = APPLICATION_TYPES.map(type => {
       const isOpen = isGlobalOpen && openTypes.includes(type);
       const circle = isOpen ? "🟢" : "🔴";
       const status = isOpen ? "**OPEN**" : "**CLOSED**";
       
-      // Find the first step for this role
-      const firstStep = steps.filter(s => s.appType === type)[0];
+      const firstStep = steps.find(s => s.appType === type);
       const stepText = firstStep ? `\n      •  Starting Step: **${firstStep.name}**` : "";
       
       return `•  ${circle} **${type}**\n      •  Status: ${status}${stepText}`;
@@ -117,12 +123,18 @@ const Admin = () => {
     };
 
     try {
+      console.log("🔄 Syncing Discord status. ID:", messageId);
       await notifyDiscord('open', payload, messageId, async (id) => {
-        // If we got a new ID, save it to the database immediately
-        await store.setConfig({ ...updatedConfig, discordWebhookMessageIdOpen: id });
+        if (id && id !== statusMessageIdRef.current) {
+          console.log("📝 Captured New Status ID:", id);
+          statusMessageIdRef.current = id;
+          await store.setConfig({ ...updatedConfig, discordWebhookMessageIdOpen: id });
+        }
       });
+    } catch (err) {
+      console.error("Sync error:", err);
     } finally {
-      setIsSyncing(false);
+      isSyncingRef.current = false;
     }
   };
 
