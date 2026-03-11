@@ -130,8 +130,9 @@ const Admin = () => {
         if (id && id !== statusMessageIdRef.current) {
           console.log("✅ New message created and ID captured:", id);
           statusMessageIdRef.current = id;
-          // IMPORTANT: Update Firestore immediately so the ID persists across refreshes
+          // Update Firestore immediately
           await store.setConfig({ ...updatedConfig, discordWebhookMessageIdOpen: id });
+          toast.success("New persistent message created!");
         } else {
           console.log("📝 Existing message patched successfully.");
         }
@@ -354,11 +355,25 @@ const Admin = () => {
                       <ToggleLeft className="w-12 h-12 text-muted-foreground" />
                     )}
                   </button>
-                  <div className="overflow-hidden">
-                    <p className={`font-bold text-lg ${config.recruitmentOpen ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {config.recruitmentOpen ? "LIVE" : "OFFLINE"}
-                    </p>
-                    <p className="text-sm text-muted-foreground truncate">Click to toggle recruitment</p>
+                  <div className="overflow-hidden flex-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`font-bold text-lg ${config.recruitmentOpen ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {config.recruitmentOpen ? "LIVE" : "OFFLINE"}
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate">Click to toggle recruitment</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          statusMessageIdRef.current = "";
+                          syncDiscordStatus({ ...config, discordWebhookMessageIdOpen: "" });
+                          toast.info("Creating fresh status embed...");
+                        }}
+                        className="px-3 py-1.5 botghost-btn text-[10px] font-bold uppercase tracking-wider !text-emerald"
+                      >
+                        Create Fresh
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -465,6 +480,7 @@ const Admin = () => {
                       </div>
                       <button
                         onClick={() => {
+                          statusMessageIdRef.current = "";
                           store.setConfig({ ...config, discordWebhookMessageIdOpen: "" });
                           toast.success("Status Link Reset", { description: "The next toggle will post a new embed." });
                         }}

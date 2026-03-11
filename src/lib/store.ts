@@ -75,7 +75,7 @@ export const notifyDiscord = async (type: 'open' | 'results' | 'logs', payload: 
       body: JSON.stringify({ type, payload, messageId }),
     });
 
-    if (res.ok && (type === 'open' || type === 'logs') && !messageId && onNewMessageId) {
+    if (res.ok && (type === 'open' || type === 'logs') && onNewMessageId) {
       const data = await res.json();
       if (data && data.id) {
         onNewMessageId(data.id);
