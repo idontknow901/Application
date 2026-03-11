@@ -93,7 +93,7 @@ const Admin = () => {
   const syncDiscordStatus = async (updatedConfig: typeof config) => {
     if (isSyncingRef.current) return;
     isSyncingRef.current = true;
-    
+
     const isGlobalOpen = updatedConfig.recruitmentOpen;
     const openTypes = updatedConfig.openApplicationTypes || [];
     const messageId = statusMessageIdRef.current || updatedConfig.discordWebhookMessageIdOpen;
@@ -102,11 +102,8 @@ const Admin = () => {
       const isOpen = isGlobalOpen && openTypes.includes(type);
       const circle = isOpen ? "🟢" : "🔴";
       const status = isOpen ? "**OPEN**" : "**CLOSED**";
-      
-      const firstStep = steps.find(s => s.appType === type);
-      const stepText = firstStep ? `\n      •  Starting Step: **${firstStep.name}**` : "";
-      
-      return `•  ${circle} **${type}**\n      •  Status: ${status}${stepText}`;
+
+      return `•  ${circle} **${type}**\n      •  Status: ${status}`;
     }).join('\n\n');
 
     const payload = {
@@ -213,18 +210,18 @@ const Admin = () => {
 
   const addStep = () => {
     if (!newStep.name.trim() || !selectedAppType) return;
-    const s: AppStep = { 
-      id: Date.now(), 
-      name: newStep.name, 
+    const s: AppStep = {
+      id: Date.now(),
+      name: newStep.name,
       description: newStep.description,
-      appType: selectedAppType as ApplicationType 
+      appType: selectedAppType as ApplicationType
     };
     const updated = [...steps, s];
     store.setSteps(updated);
-    
+
     // Auto-select the newly created step for adding questions
     setNewQ(prev => ({ ...prev, step: s.id }));
-    
+
     setNewStep({ name: "", description: "", appType: selectedAppType as ApplicationType });
     toast.success("Step added");
     triggerLog("Step Added", `Added new step: **${s.name}** to **${selectedAppType}**`);
@@ -234,13 +231,13 @@ const Admin = () => {
     const s = steps.find(s => s.id === id);
     const updated = steps.filter(s => s.id !== id);
     store.setSteps(updated);
-    
+
     // If the removed step was selected in newQ, reset it
     if (newQ.step === id) {
       const nextStep = updated.find(st => st.appType === selectedAppType);
       setNewQ(prev => ({ ...prev, step: nextStep?.id || 1 }));
     }
-    
+
     toast.success("Step removed");
     if (s) triggerLog("Step Removed", `Removed step: **${s.name}**`);
   };
@@ -303,8 +300,8 @@ const Admin = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
           <h1 className="font-display text-3xl font-bold text-primary drop-shadow-sm text-center sm:text-left w-full sm:w-auto">Admin Panel</h1>
           <button
-            onClick={() => { 
-              store.setAdminAuth(false); 
+            onClick={() => {
+              store.setAdminAuth(false);
               setAuthenticated(false);
               sessionStorage.removeItem("epic-rail-log-session-id");
               sessionStorage.removeItem("epic-rail-log-history");
@@ -363,7 +360,7 @@ const Admin = () => {
                         </p>
                         <p className="text-sm text-muted-foreground truncate">Click to toggle recruitment</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => {
                           statusMessageIdRef.current = "";
                           syncDiscordStatus({ ...config, discordWebhookMessageIdOpen: "" });
