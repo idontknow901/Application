@@ -205,7 +205,8 @@ const Admin = () => {
     };
     const updated = [...questions, q];
     store.setQuestions(updated);
-    setNewQ({ label: "", step: steps[0]?.id || 1, type: "text" });
+    const relevantSteps = steps.filter(s => s.appType === selectedAppType || s.appType === 'Common');
+    setNewQ({ label: "", step: relevantSteps[0]?.id || 1, type: "text" });
     toast.success("Question added");
     triggerLog("Question Added", `Added new question to **${selectedAppType}**: "${q.label}"`);
   };
@@ -484,9 +485,9 @@ const Admin = () => {
                     </div>
                     {imageUrlInput && (
                       <div className="mt-4 rounded-lg overflow-hidden border border-border/30 max-w-xs mx-auto">
-                        <img 
-                          src={imageUrlInput} 
-                          alt="Status Preview" 
+                        <img
+                          src={imageUrlInput}
+                          alt="Status Preview"
                           className="w-full h-auto object-cover max-h-40"
                           onError={(e) => (e.currentTarget.src = "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg")}
                         />
@@ -658,35 +659,45 @@ const Admin = () => {
               </div>
 
               {/* Questions mapping for specific selected role */}
-              {steps.map((step, idx) => {
-                const stepQs = questions.filter((q) => (q.step === step.id || q.step === idx + 1) && q.appType === selectedAppType);
-                if (stepQs.length === 0) return null;
+              {/* Group questions by step */}
+              {(() => {
+                const roleQs = questions.filter(q => q.appType === selectedAppType);
+                const relevantSteps = steps.filter(s => s.appType === selectedAppType || s.appType === 'Common');
 
-                return (
-                  <div key={step.id} className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.5)" }}>
-                    <h3 className="font-display text-lg font-bold text-primary mb-4">Step: {step.name}</h3>
+                const matchedQIds = new Set();
+                const stepSections = relevantSteps.map((step, idx) => {
+                  const stepQs = roleQs.filter(q => q.step === step.id || q.step === idx + 1);
+                  stepQs.forEach(q => matchedQIds.add(q.id));
+                  if (stepQs.length === 0) return null;
+
+                  return (
+                    <div key={step.id} className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.5)" }}>
+                      <h3 className="font-display text-lg font-bold text-primary mb-1">Step: {step.name}</h3>
+                      <p className="text-[10px] text-muted-foreground mb-4 uppercase tracking-wider">{step.appType === 'Common' ? 'Common Step' : 'Role-Specific Step'}</p>
+                      <div className="space-y-3">
+                        {stepQs.map((q) => (
+                          <QuestionRow key={q.id} q={q} onRemove={removeQuestion} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+
+                const orphanedQs = roleQs.filter(q => !matchedQIds.has(q.id));
+                const orphanedSection = orphanedQs.length > 0 && (
+                  <div key="orphaned" className="glass-card p-6 border-dashed border-red-500/30" style={{ background: "hsl(var(--card) / 0.3)" }}>
+                    <h3 className="font-display text-lg font-bold text-red-400 mb-1">Uncategorized Questions</h3>
+                    <p className="text-[10px] text-muted-foreground mb-4 uppercase tracking-wider">These questions aren't assigned to any active step</p>
                     <div className="space-y-3">
-                      {stepQs.map((q) => (
-                        <div key={q.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-background/40 border border-border/20 px-5 py-4">
-                          <div className="overflow-hidden">
-                            <p className="text-sm font-medium text-foreground whitespace-pre-wrap">{q.label}</p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              <span className="text-xs bg-primary/10 px-2 py-0.5 rounded text-primary border border-primary/20">{q.type}</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeQuestion(q.id)}
-                            className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10"
-                            title="Delete specific question"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                      {orphanedQs.map((q) => (
+                        <QuestionRow key={q.id} q={q} onRemove={removeQuestion} />
                       ))}
                     </div>
                   </div>
                 );
-              })}
+
+                return [...stepSections, orphanedSection];
+              })()}
             </div>
           )}
 
@@ -748,6 +759,27 @@ const Admin = () => {
     </PageWrapper>
   );
 };
+
+function QuestionRow({ q, onRemove }: { q: Question; onRemove: (id: string) => void }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-background/40 border border-border/20 px-5 py-4">
+      <div className="overflow-hidden">
+        <p className="text-sm font-medium text-foreground whitespace-pre-wrap">{q.label}</p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <span className="text-xs bg-primary/10 px-2 py-0.5 rounded text-primary border border-primary/20">{q.type}</span>
+          <span className="text-[9px] text-muted-foreground uppercase opacity-50">ID: {q.id}</span>
+        </div>
+      </div>
+      <button
+        onClick={() => onRemove(q.id)}
+        className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10"
+        title="Delete specific question"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
 
 function ApplicationCard({
   app, questions, onAccept, onReject, onDelete,

@@ -21,18 +21,22 @@ const Apply = () => {
 
   const activeSteps = useMemo(() => {
     if (!selectedAppType) return [];
-    return steps.filter(s => s.appType === selectedAppType);
+    const roleSteps = steps.filter(s => s.appType === selectedAppType);
+    if (roleSteps.length > 0) return roleSteps;
+    
+    // Fallback to Common steps if no role-specific steps exist
+    return steps.filter(s => s.appType === 'Common' || !s.appType);
   }, [steps, selectedAppType]);
 
   const stepQuestions = useMemo(() => {
     const currentStepObj = activeSteps[currentStep - 1];
     if (!currentStepObj) return [];
 
-    let qs = questions.filter((q) => q.step === currentStepObj.id);
-
-    // Filter strictly by role
-    qs = qs.filter((q) => q.appType === selectedAppType);
-    return qs;
+    // Filter by step ID or legacy index, and strictly by role
+    return questions.filter((q) => 
+      (q.step === currentStepObj.id || q.step === currentStep) && 
+      q.appType === selectedAppType
+    );
   }, [questions, currentStep, selectedAppType, activeSteps]);
 
   const maxStep = activeSteps.length;
@@ -88,12 +92,22 @@ const Apply = () => {
       // Intelligent username search
       let detectedUsername = answers["q1"] || "";
       if (!detectedUsername || !detectedUsername.trim()) {
-        const keywords = ["username", "discord", "name", "info"];
+        const keywords = ["username", "discord", "name", "info", "roblox", "id", "tag"];
+        // Search in all questions belonging to this role or common steps
         const userQ = questions.find(q => 
           keywords.some(k => q.label.toLowerCase().includes(k)) && 
-          q.appType === selectedAppType
+          (q.appType === selectedAppType || q.appType === 'Common' || !q.appType)
         );
         if (userQ) detectedUsername = answers[userQ.id];
+      }
+      
+      // Secondary fallback: if still empty, take the first short text answer we find
+      if (!detectedUsername || !detectedUsername.trim()) {
+        const firstTextId = Object.keys(answers).find(id => {
+          const q = questions.find(q => q.id === id);
+          return q?.type === 'text' && answers[id].trim().length > 0;
+        });
+        if (firstTextId) detectedUsername = answers[firstTextId];
       }
       
       const username = (detectedUsername?.trim()) || "Anonymous";
