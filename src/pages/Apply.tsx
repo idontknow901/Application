@@ -276,11 +276,16 @@ const Apply = () => {
                 {/* Nav buttons */}
                 <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-12 pt-8 border-t border-border/50 relative z-10 w-full">
                   <button
-                    onClick={() => setCurrentStep((s) => s - 1)}
-                    disabled={currentStep === 1}
-                    className="flex items-center justify-center sm:justify-start gap-2 px-8 py-4 rounded-2xl bg-background/50 border border-border/50 text-foreground font-bold hover:bg-background/80 disabled:opacity-20 disabled:cursor-not-allowed transition-all w-full sm:w-auto"
+                    onClick={() => {
+                      if (currentStep === 1) {
+                        setSelectedAppType("");
+                      } else {
+                        setCurrentStep((s) => s - 1);
+                      }
+                    }}
+                    className="flex items-center justify-center sm:justify-start gap-2 px-8 py-4 rounded-2xl bg-background/50 border border-border/50 text-foreground font-bold hover:bg-background/80 transition-all w-full sm:w-auto"
                   >
-                    <ChevronLeft className="w-5 h-5" /> Back
+                    <ChevronLeft className="w-5 h-5" /> {currentStep === 1 ? "Change Category" : "Back"}
                   </button>
 
                   {currentStep < maxStep ? (

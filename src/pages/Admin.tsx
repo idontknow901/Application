@@ -142,28 +142,47 @@ const Admin = () => {
   };
 
   const addStep = () => {
-    if (!newStep.name.trim()) return;
+    if (!newStep.name.trim() || !selectedAppType) return;
     const s: AppStep = { 
       id: Date.now(), 
       name: newStep.name, 
       description: newStep.description,
-      appType: newStep.appType 
+      appType: selectedAppType as ApplicationType 
     };
     const updated = [...steps, s];
     store.setSteps(updated);
-    if (!newQ.step) setNewQ({ ...newQ, step: s.id });
-    setNewStep({ name: "", description: "", appType: APPLICATION_TYPES[0] });
+    
+    // Auto-select the newly created step for adding questions
+    setNewQ(prev => ({ ...prev, step: s.id }));
+    
+    setNewStep({ name: "", description: "", appType: selectedAppType as ApplicationType });
     toast.success("Step added");
-    logAdminAction("Step Added", `Added new step: **${s.name}** (Category: ${s.appType})`, adminName);
+    logAdminAction("Step Added", `Added new step: **${s.name}** to **${selectedAppType}**`, adminName);
   };
 
   const removeStep = (id: number) => {
     const s = steps.find(s => s.id === id);
     const updated = steps.filter(s => s.id !== id);
     store.setSteps(updated);
+    
+    // If the removed step was selected in newQ, reset it
+    if (newQ.step === id) {
+      const nextStep = updated.find(st => st.appType === selectedAppType);
+      setNewQ(prev => ({ ...prev, step: nextStep?.id || 1 }));
+    }
+    
     toast.success("Step removed");
     if (s) logAdminAction("Step Removed", `Removed step: **${s.name}**`, adminName);
   };
+
+  // Update newQ and newStep when selectedAppType changes
+  useEffect(() => {
+    if (selectedAppType) {
+      const firstStep = steps.find(s => s.appType === selectedAppType);
+      setNewQ(prev => ({ ...prev, step: firstStep?.id || 1 }));
+      setNewStep(prev => ({ ...prev, appType: selectedAppType as ApplicationType }));
+    }
+  }, [selectedAppType, steps]);
 
   const pending = applications.filter((a) => a.status === "Pending");
   const filteredPending = reviewFilter === "All" ? pending : pending.filter(a => a.applicationType === reviewFilter);
@@ -428,85 +447,6 @@ const Admin = () => {
                 </div>
               </div>
 
-              <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
-                <h3 className="font-display text-lg font-bold text-primary mb-4">Application Form Steps (Pages)</h3>
-                <p className="text-sm text-muted-foreground mb-4">Configure steps globally or for specific categories.</p>
-                <div className="flex flex-col gap-3 mb-6 relative z-10">
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <input
-                      value={newStep.name}
-                      onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
-                      placeholder="Step Name (e.g. Scenario)"
-                      className="w-full md:w-1/3 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                    <input
-                      value={newStep.description}
-                      onChange={(e) => setNewStep({ ...newStep, description: e.target.value })}
-                      placeholder="Step Description..."
-                      className="w-full md:flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <select
-                      value={newStep.appType}
-                      onChange={(e) => setNewStep({ ...newStep, appType: e.target.value as any })}
-                      className="flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
-                    >
-                      {APPLICATION_TYPES.map(type => <option key={type} value={type} className="bg-card">{type}</option>)}
-                    </select>
-                    <button
-                      onClick={addStep}
-                      className="px-6 py-3 shrink-0 botghost-btn-primary"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Common Steps (Disabled for strict categories) */}
-                  <div className="hidden">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Common Steps</h4>
-                    <div className="space-y-2">
-                      {steps.filter(s => !s.appType || s.appType === 'Common').map((s, idx) => (
-                        <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-background/30 border border-border/20 px-4 py-4">
-                          <div className="overflow-hidden">
-                            <p className="text-sm font-bold text-foreground">Step: {s.name}</p>
-                            <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
-                          </div>
-                          <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Category Specific Steps */}
-                  {APPLICATION_TYPES.map(type => {
-                    const roleSteps = steps.filter(s => s.appType === type);
-                    if (roleSteps.length === 0) return null;
-                    return (
-                      <div key={type}>
-                        <h4 className="text-xs font-bold text-primary/70 uppercase tracking-wider mb-3">{type} Steps</h4>
-                        <div className="space-y-2">
-                          {roleSteps.map((s) => (
-                            <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-primary/5 border border-primary/20 px-4 py-4">
-                              <div className="overflow-hidden">
-                                <p className="text-sm font-bold text-foreground">{s.name}</p>
-                                <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
-                              </div>
-                              <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           )}
 
@@ -523,8 +463,49 @@ const Admin = () => {
               </button>
 
               <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
-                <h3 className="font-display text-xl font-bold text-primary mb-2">Add New Question ({selectedAppType})</h3>
-                <p className="text-sm text-muted-foreground mb-6">Create a new question that will only appear to applicants applying for this role.</p>
+                <h3 className="font-display text-xl font-bold text-primary mb-4">Application Form Steps (Pages)</h3>
+                <p className="text-sm text-muted-foreground mb-4">Configure the pages of your application for {selectedAppType}.</p>
+                <div className="flex flex-col gap-3 mb-6 relative z-10">
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <input
+                      value={newStep.name}
+                      onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
+                      placeholder="Step Name (e.g. Scenario)"
+                      className="w-full md:w-1/3 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <input
+                      value={newStep.description}
+                      onChange={(e) => setNewStep({ ...newStep, description: e.target.value })}
+                      placeholder="Step Description..."
+                      className="w-full md:flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <button
+                      onClick={addStep}
+                      className="px-6 py-3 shrink-0 botghost-btn-primary"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {steps.filter(s => s.appType === selectedAppType).map((s) => (
+                    <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-primary/5 border border-primary/20 px-4 py-4">
+                      <div className="overflow-hidden">
+                        <p className="text-sm font-bold text-foreground">Step: {s.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
+                      </div>
+                      <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
+                <h3 className="font-display text-xl font-bold text-primary mb-2">Add New Question</h3>
+                <p className="text-sm text-muted-foreground mb-6">Create questions for {selectedAppType}. Each question must belong to a step above.</p>
                 <div className="flex flex-col gap-4">
                   <input
                     value={newQ.label}
@@ -538,6 +519,7 @@ const Admin = () => {
                       onChange={(e) => setNewQ({ ...newQ, step: Number(e.target.value) })}
                       className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
                     >
+                      <option value="1" disabled={steps.some(s => s.id === 1)}>Select a step...</option>
                       {steps.filter(s => s.appType === selectedAppType).map(s => <option key={s.id} value={s.id} className="bg-card">{s.name}</option>)}
                     </select>
                     <div className="flex gap-2">
@@ -554,7 +536,7 @@ const Admin = () => {
                         onClick={addQuestion}
                         className="px-6 py-3 shrink-0 botghost-btn-primary shadow-none"
                       >
-                        Add
+                        Add Question
                       </button>
                     </div>
                   </div>
