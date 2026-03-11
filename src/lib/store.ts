@@ -17,6 +17,7 @@ export interface AppStep {
   id: number;
   name: string;
   description: string;
+  appType?: ApplicationType | 'Common';
 }
 
 export interface Question {
@@ -26,7 +27,7 @@ export interface Question {
   type: 'text' | 'textarea' | 'select' | 'boolean';
   options?: string[];
   required: boolean;
-  appType?: ApplicationType;
+  appType?: ApplicationType | 'Common';
 }
 
 export interface Application {
@@ -44,13 +45,14 @@ export interface AppConfig {
   openApplicationTypes: ApplicationType[];
   discordWebhookUrlResults?: string;
   discordWebhookUrlOpen?: string;
+  discordWebhookUrlLogs?: string;
   discordWebhookMessageIdOpen?: string;
   statusImageUrl?: string;
 }
 
 export const DEFAULT_STEPS: AppStep[] = [
-  { id: 1, name: "Discord Info & Role", description: "Basic details about you" },
-  { id: 2, name: "Questions", description: "Role-specific questions" },
+  { id: 1, name: "Discord Info & Role", description: "Basic details about you", appType: 'Common' },
+  { id: 2, name: "Questions", description: "Role-specific questions", appType: 'Common' },
 ];
 
 export const DEFAULT_QUESTIONS: Question[] = [];
@@ -60,11 +62,12 @@ export const DEFAULT_CONFIG: AppConfig = {
   openApplicationTypes: [...APPLICATION_TYPES],
   discordWebhookUrlResults: "",
   discordWebhookUrlOpen: "",
+  discordWebhookUrlLogs: "",
   discordWebhookMessageIdOpen: "",
   statusImageUrl: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg",
 };
 
-export const notifyDiscord = async (type: 'open' | 'results', payload: any, messageId?: string, onNewMessageId?: (id: string) => void) => {
+export const notifyDiscord = async (type: 'open' | 'results' | 'logs', payload: any, messageId?: string, onNewMessageId?: (id: string) => void) => {
   try {
     const res = await fetch("/api/notify", {
       method: "POST",
@@ -81,6 +84,24 @@ export const notifyDiscord = async (type: 'open' | 'results', payload: any, mess
   } catch (error) {
     console.error("Failed to trigger secure notification", error);
   }
+};
+
+export const logAdminAction = async (action: string, details: string, adminName: string = "Administrator") => {
+  const payload = {
+    embeds: [{
+      title: "🛠️ Admin Action Logged",
+      fields: [
+        { name: "User", value: adminName, inline: true },
+        { name: "Action", value: action, inline: true },
+        { name: "Time", value: new Date().toLocaleString(), inline: true },
+        { name: "Details", value: details }
+      ],
+      color: 0x3b82f6,
+      timestamp: new Date().toISOString(),
+      footer: { text: "EROI Security Logs" }
+    }]
+  };
+  await notifyDiscord('logs', payload);
 };
 
 export function useAppStore(isAdmin = false) {
@@ -128,7 +149,10 @@ export const store = {
     return sessionStorage.getItem('epic-rail-admin-auth') === 'true';
   },
   setAdminAuth: (val: boolean) => {
-    if (val) sessionStorage.setItem('epic-rail-admin-auth', 'true');
+    if (val) {
+      sessionStorage.setItem('epic-rail-admin-auth', 'true');
+      logAdminAction("Admin Login", "An admin has logged into the panel.");
+    }
     else sessionStorage.removeItem('epic-rail-admin-auth');
   },
   setConfig: async (config: AppConfig) => {
@@ -175,10 +199,13 @@ export const store = {
           color: status === 'Accepted' ? 0x00ff00 : 0xff0000,
         }]
       });
+
+      logAdminAction(`Application ${status}`, `Admin ${status.toLowerCase()}ed application **${id}** (${apps[idx].discordUsername})`);
     }
   },
   deleteApplication: async (id: string) => {
     await deleteDoc(doc(db, "applications", id));
+    logAdminAction("Application Deleted", `Admin deleted application **${id}**`);
   },
   clearResults: async (apps: Application[]) => {
     const toDelete = apps.filter(a => a.status !== 'Pending');

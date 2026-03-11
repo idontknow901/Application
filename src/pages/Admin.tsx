@@ -5,7 +5,7 @@ import {
   ClipboardList, Settings, Users, RotateCcw, ArrowLeft, ChevronRight,
   Briefcase
 } from "lucide-react";
-import { store, useAppStore, APPLICATION_TYPES, type Application, type Question, type ApplicationType, type AppStep, notifyDiscord } from "@/lib/store";
+import { store, useAppStore, APPLICATION_TYPES, type Application, type Question, type ApplicationType, type AppStep, notifyDiscord, logAdminAction } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import { toast } from "sonner";
 
@@ -15,10 +15,11 @@ const Admin = () => {
   const [tab, setTab] = useState<"dashboard" | "questions" | "review">("dashboard");
   const [selectedAppType, setSelectedAppType] = useState<string | null>(null);
   const [reviewFilter, setReviewFilter] = useState<string>("All");
+  const [adminName, setAdminName] = useState(() => sessionStorage.getItem("epic-rail-admin-name") || "Administrator");
 
   const { config, applications, questions, steps, loading } = useAppStore(true);
 
-  const [newStep, setNewStep] = useState({ name: "", description: "" });
+  const [newStep, setNewStep] = useState<{ name: string; description: string; appType: ApplicationType }>({ name: "", description: "", appType: APPLICATION_TYPES[0] });
   const [newQ, setNewQ] = useState<{ label: string; step: number; type: 'text' | 'textarea' | 'select' | 'boolean' }>({
     label: "", step: 1, type: "text"
   });
@@ -80,6 +81,7 @@ const Admin = () => {
     await store.setConfig(next);
     toast.success(`Recruitment ${next.recruitmentOpen ? "OPENED" : "CLOSED"}`);
     syncDiscordStatus(next);
+    logAdminAction("Toggle Recruitment", `Global recruitment status changed to **${next.recruitmentOpen ? "OPEN" : "CLOSED"}**`, adminName);
   };
 
   const toggleAppType = async (type: ApplicationType) => {
@@ -93,6 +95,7 @@ const Admin = () => {
     await store.setConfig(updated);
     toast.success(`${type} applications ${isOpening ? "opened" : "closed"}`);
     syncDiscordStatus(updated);
+    logAdminAction("Toggle Role Recruitment", `Recruitment for **${type}** was **${isOpening ? "OPENED" : "CLOSED"}**`, adminName);
   };
 
   const updateStatusImage = async (url: string) => {
@@ -100,6 +103,7 @@ const Admin = () => {
     await store.setConfig(updated);
     toast.success("Status embed image updated");
     syncDiscordStatus(updated);
+    logAdminAction("Update Status Image", `Admin updated the recruitment status image URL to: ${url}`, adminName);
   };
 
   const handleStatus = async (id: string, status: "Accepted" | "Rejected") => {
@@ -126,28 +130,39 @@ const Admin = () => {
     store.setQuestions(updated);
     setNewQ({ label: "", step: steps[0]?.id || 1, type: "text" });
     toast.success("Question added");
+    logAdminAction("Question Added", `Added new question to **${selectedAppType}**: "${q.label}"`, adminName);
   };
 
   const removeQuestion = (id: string) => {
+    const q = questions.find(q => q.id === id);
     const updated = questions.filter((q) => q.id !== id);
     store.setQuestions(updated);
     toast.success("Question removed");
+    if (q) logAdminAction("Question Removed", `Removed question from **${q.appType}**: "${q.label}"`, adminName);
   };
 
   const addStep = () => {
     if (!newStep.name.trim()) return;
-    const s: AppStep = { id: Date.now(), name: newStep.name, description: newStep.description };
+    const s: AppStep = { 
+      id: Date.now(), 
+      name: newStep.name, 
+      description: newStep.description,
+      appType: newStep.appType 
+    };
     const updated = [...steps, s];
     store.setSteps(updated);
     if (!newQ.step) setNewQ({ ...newQ, step: s.id });
-    setNewStep({ name: "", description: "" });
+    setNewStep({ name: "", description: "", appType: APPLICATION_TYPES[0] });
     toast.success("Step added");
+    logAdminAction("Step Added", `Added new step: **${s.name}** (Category: ${s.appType})`, adminName);
   };
 
   const removeStep = (id: number) => {
+    const s = steps.find(s => s.id === id);
     const updated = steps.filter(s => s.id !== id);
     store.setSteps(updated);
     toast.success("Step removed");
+    if (s) logAdminAction("Step Removed", `Removed step: **${s.name}**`, adminName);
   };
 
   const pending = applications.filter((a) => a.status === "Pending");
@@ -163,6 +178,16 @@ const Admin = () => {
           >
             <Lock className="w-14 h-14 mx-auto mb-4 text-primary" />
             <h2 className="font-display text-2xl font-bold text-primary mb-6">Admin Access</h2>
+            <input
+              type="text"
+              value={adminName}
+              onChange={(e) => {
+                setAdminName(e.target.value);
+                sessionStorage.setItem("epic-rail-admin-name", e.target.value);
+              }}
+              placeholder="Your Name (for logs)"
+              className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4 backdrop-blur-sm"
+            />
             <input
               type="password"
               value={password}
@@ -292,6 +317,7 @@ const Admin = () => {
                       onClick={async () => {
                         await store.clearResults(applications);
                         toast.success("Results cleared — only pending applications remain");
+                        logAdminAction("Clear Results", "Admin cleared all accepted/rejected applications from the results page.", adminName);
                       }}
                       className="flex items-center gap-2 px-5 py-3 botghost-btn !text-red-400 !border-red-500/30 w-full sm:w-auto justify-center"
                     >
@@ -304,6 +330,7 @@ const Admin = () => {
                       onClick={async () => {
                         await store.syncSettings();
                         toast.success("Settings synchronized with database");
+                        logAdminAction("Sync Database", "Admin re-synchronized the database with default settings.", adminName);
                       }}
                       className="flex items-center gap-2 px-5 py-3 botghost-btn !text-emerald-400 !border-emerald-500/30 w-full sm:w-auto justify-center"
                     >
@@ -402,42 +429,82 @@ const Admin = () => {
               </div>
 
               <div className="glass-card p-6" style={{ background: "hsl(var(--card) / 0.8)" }}>
-                <h3 className="font-display text-lg font-bold text-primary mb-4">Global Form Steps (Pages)</h3>
-                <p className="text-sm text-muted-foreground mb-4">Steps are shared across all application types.</p>
-                <div className="flex flex-col md:flex-row gap-3 mb-6 relative z-10">
-                  <input
-                    value={newStep.name}
-                    onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
-                    placeholder="Step Name (e.g. Scenario)"
-                    className="w-full md:w-1/3 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                  <div className="flex w-full md:flex-1 gap-2">
+                <h3 className="font-display text-lg font-bold text-primary mb-4">Application Form Steps (Pages)</h3>
+                <p className="text-sm text-muted-foreground mb-4">Configure steps globally or for specific categories.</p>
+                <div className="flex flex-col gap-3 mb-6 relative z-10">
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <input
+                      value={newStep.name}
+                      onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
+                      placeholder="Step Name (e.g. Scenario)"
+                      className="w-full md:w-1/3 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
                     <input
                       value={newStep.description}
                       onChange={(e) => setNewStep({ ...newStep, description: e.target.value })}
                       placeholder="Step Description..."
-                      className="w-full rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      className="w-full md:flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
+                  </div>
+                  <div className="flex gap-2">
+                    <select
+                      value={newStep.appType}
+                      onChange={(e) => setNewStep({ ...newStep, appType: e.target.value as any })}
+                      className="flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                    >
+                      {APPLICATION_TYPES.map(type => <option key={type} value={type} className="bg-card">{type}</option>)}
+                    </select>
                     <button
                       onClick={addStep}
-                      className="px-4 py-3 shrink-0 botghost-btn-primary"
+                      className="px-6 py-3 shrink-0 botghost-btn-primary"
                     >
                       <Plus className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  {steps.map((s, idx) => (
-                    <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-background/30 border border-border/20 px-4 py-4">
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-bold text-foreground">Step {idx + 1}: {s.name}</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
-                      </div>
-                      <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+
+                <div className="space-y-6">
+                  {/* Common Steps (Disabled for strict categories) */}
+                  <div className="hidden">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Common Steps</h4>
+                    <div className="space-y-2">
+                      {steps.filter(s => !s.appType || s.appType === 'Common').map((s, idx) => (
+                        <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-background/30 border border-border/20 px-4 py-4">
+                          <div className="overflow-hidden">
+                            <p className="text-sm font-bold text-foreground">Step: {s.name}</p>
+                            <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
+                          </div>
+                          <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Category Specific Steps */}
+                  {APPLICATION_TYPES.map(type => {
+                    const roleSteps = steps.filter(s => s.appType === type);
+                    if (roleSteps.length === 0) return null;
+                    return (
+                      <div key={type}>
+                        <h4 className="text-xs font-bold text-primary/70 uppercase tracking-wider mb-3">{type} Steps</h4>
+                        <div className="space-y-2">
+                          {roleSteps.map((s) => (
+                            <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-primary/5 border border-primary/20 px-4 py-4">
+                              <div className="overflow-hidden">
+                                <p className="text-sm font-bold text-foreground">{s.name}</p>
+                                <p className="text-xs text-muted-foreground mt-1 truncate">{s.description}</p>
+                              </div>
+                              <button onClick={() => removeStep(s.id)} className="self-end sm:self-auto shrink-0 text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-colors bg-red-500/10">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -471,7 +538,7 @@ const Admin = () => {
                       onChange={(e) => setNewQ({ ...newQ, step: Number(e.target.value) })}
                       className="w-full rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
                     >
-                      {steps.map(s => <option key={s.id} value={s.id} className="bg-card">{s.name}</option>)}
+                      {steps.filter(s => s.appType === selectedAppType).map(s => <option key={s.id} value={s.id} className="bg-card">{s.name}</option>)}
                     </select>
                     <div className="flex gap-2">
                       <select

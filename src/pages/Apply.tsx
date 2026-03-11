@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronLeft, Send, Sparkles, AlertCircle } from "lucide-react";
+import { ChevronRight, ChevronLeft, Send, Sparkles, AlertCircle, Briefcase, RotateCcw, Check, X } from "lucide-react";
 import { store, useAppStore, APPLICATION_TYPES, type ApplicationType } from "@/lib/store";
 import PageWrapper from "@/components/PageWrapper";
 import TrainLoader from "@/components/TrainLoader";
@@ -19,20 +19,23 @@ const Apply = () => {
     ? config.openApplicationTypes
     : APPLICATION_TYPES;
 
+  const activeSteps = useMemo(() => {
+    if (!selectedAppType) return [];
+    return steps.filter(s => s.appType === selectedAppType);
+  }, [steps, selectedAppType]);
+
   const stepQuestions = useMemo(() => {
-    const currentStepObj = steps[currentStep - 1];
+    const currentStepObj = activeSteps[currentStep - 1];
     if (!currentStepObj) return [];
 
-    let qs = questions.filter((q) => q.step === currentStepObj.id || q.step === currentStep);
+    let qs = questions.filter((q) => q.step === currentStepObj.id);
 
-    // filter by application type
-    if (selectedAppType) {
-      qs = qs.filter((q) => q.appType === selectedAppType);
-    }
+    // Filter strictly by role
+    qs = qs.filter((q) => q.appType === selectedAppType);
     return qs;
-  }, [questions, currentStep, selectedAppType, steps]);
+  }, [questions, currentStep, selectedAppType, activeSteps]);
 
-  const maxStep = steps.length;
+  const maxStep = activeSteps.length;
 
   if (!config.recruitmentOpen) {
     return (
@@ -66,7 +69,7 @@ const Apply = () => {
 
   const handleSubmit = async () => {
     const allQs = questions.filter((q) => {
-      const isConfiguredStep = steps.some((s, idx) => q.step === s.id || q.step === idx + 1);
+      const isConfiguredStep = activeSteps.some((s) => q.step === s.id);
       const isRoleMatch = q.appType === selectedAppType;
       return isConfiguredStep && isRoleMatch;
     });
@@ -105,21 +108,17 @@ const Apply = () => {
   };
 
   const canGoNext = (() => {
-    if (currentStep === 1) {
-      const step1Valid = stepQuestions.every((q) => !q.required || answers[q.id]?.trim());
-      return step1Valid && !!selectedAppType;
-    }
     return stepQuestions.every((q) => !q.required || answers[q.id]?.trim());
   })();
 
   return (
     <PageWrapper>
-      <div className="container mx-auto px-4 sm:px-6 w-full max-w-3xl overflow-x-hidden">
+      <div className="container mx-auto px-4 sm:px-6 w-full max-w-4xl overflow-x-hidden">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8 sm:mb-12 mt-4"
+          className="text-center mb-8 sm:mb-10 mt-4"
         >
           <motion.div
             animate={{ rotate: [0, 10, -10, 0] }}
@@ -133,172 +132,179 @@ const Apply = () => {
           </h1>
         </motion.div>
 
-        {/* Progress Steps */}
-        <div className="w-full pb-8">
-          <div className="flex flex-wrap items-center justify-center gap-y-6 gap-x-3 sm:gap-x-6 px-2">
-            {steps.map((stepData, i) => {
-              const step = i + 1;
-              const active = currentStep === step;
-              const done = currentStep > step;
-              return (
-                <div key={stepData.id} className="flex items-center gap-3 sm:gap-6 whitespace-nowrap">
-                  <div className="flex flex-col items-center gap-2">
-                    <motion.div
-                      animate={active ? { scale: [1, 1.1, 1] } : {}}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-base font-bold min-w-[2.5rem] sm:min-w-[3rem] transition-colors ${active
-                        ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsla(352,82%,62%,0.4)] border border-primary/20"
-                        : done
-                          ? "bg-emerald/20 text-emerald border border-emerald/30 shadow-inner"
-                          : "bg-background/50 border border-border/50 text-muted-foreground"
-                        }`}
-                    >
-                      {done ? "✓" : step}
-                    </motion.div>
-                    <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${active ? "text-primary" : "text-muted-foreground"}`}>
-                      {stepData.name}
-                    </span>
-                  </div>
-                  {i < steps.length - 1 && (
-                    <div className={`w-6 sm:w-10 h-0.5 sm:h-1 -mt-5 rounded-full transition-colors hidden md:block ${done ? "bg-emerald/50" : "bg-border/30"}`} />
-                  )}
-                </div>
-              );
-            })}
+        {/* Step 0: Application Type Selector */}
+        {!selectedAppType && (
+          <div className="glass-card p-8 sm:p-12 text-center w-full max-w-2xl mx-auto overflow-hidden relative" style={{ background: "hsl(var(--card) / 0.7)" }}>
+            <h2 className="font-display text-2xl font-bold text-foreground mb-4">Select Your Department</h2>
+            <p className="text-muted-foreground mb-8 text-sm sm:text-base">Please choose the department you wish to apply for to begin the process.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {openTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedAppType(type)}
+                  className="px-6 py-5 rounded-2xl border border-border/30 bg-background/50 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all font-bold text-sm sm:text-base shadow-sm hover:shadow-primary/10 flex flex-col items-center gap-2 group"
+                >
+                  <Briefcase className="w-6 h-6 mb-1 opacity-50 group-hover:opacity-100 transition-opacity" />
+                  {type}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Form Container */}
-        <div
-          className="glass-card p-6 sm:p-10 relative overflow-hidden w-full border border-border bg-card/40 shadow-xl"
-        >
-          {/* Decorative Background Blob */}
-          <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
-
-          <div
-            key={currentStep}
-            className="space-y-6 sm:space-y-8 relative z-10 w-full"
-          >
-            <div className="border-b border-border/50 pb-4 mb-6">
-              <h2 className="font-display text-2xl sm:text-3xl font-black text-foreground">
-                {steps[currentStep - 1]?.name}
-              </h2>
-              {steps[currentStep - 1]?.description && (
-                <p className="text-sm sm:text-base text-muted-foreground mt-2">{steps[currentStep - 1].description}</p>
-              )}
+        {selectedAppType && (
+          <>
+            {/* Progress Steps - Single Row */}
+            <div className="w-full pb-10 overflow-x-auto scrollbar-hide flex justify-center">
+              <div className="flex flex-nowrap items-center justify-center px-4 gap-4 sm:gap-8 min-w-max">
+                {activeSteps.map((stepData, i) => {
+                  const step = i + 1;
+                  const active = currentStep === step;
+                  const done = currentStep > step;
+                  return (
+                    <div key={stepData.id} className="flex items-center gap-4 sm:gap-8 shrink-0">
+                      <div className="flex flex-col items-center gap-3">
+                        <motion.div
+                          animate={active ? { scale: [1, 1.1, 1], boxShadow: ["0 0 0px hsla(352,82%,62%,0)", "0 0 20px hsla(352,82%,62%,0.4)", "0 0 0px hsla(352,82%,62%,0)"] } : {}}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-sm sm:text-base font-bold transition-all duration-500 border-2 ${active
+                            ? "bg-primary text-primary-foreground border-primary shadow-lg"
+                            : done
+                              ? "bg-emerald/20 text-emerald border-emerald/50"
+                              : "bg-background/40 border-border/30 text-muted-foreground"
+                            }`}
+                        >
+                          {done ? "✓" : step}
+                        </motion.div>
+                        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] text-center max-w-[80px] sm:max-w-[120px] shadow-sm leading-tight inline-block ${active ? "text-primary" : "text-muted-foreground"}`}>
+                          {stepData.name}
+                        </span>
+                      </div>
+                      {i < activeSteps.length - 1 && (
+                        <div className={`w-8 sm:w-16 h-[2px] rounded-full transition-all duration-700 -mt-8 ${done ? "bg-emerald/50" : "bg-border/20"}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Step 1: Application Type Selector */}
-            {currentStep === 1 && (
-              <div className="space-y-4 bg-background/30 p-5 rounded-2xl border border-border/20">
-                <label className="text-sm font-bold text-primary uppercase tracking-wide">
-                  Select Position <span className="text-crimson">*</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {openTypes.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setSelectedAppType(type)}
-                      className={`px-4 py-4 rounded-xl text-sm font-bold transition-all text-left ${selectedAppType === type
-                        ? "bg-primary/20 text-primary border-2 border-primary shadow-lg shadow-primary/20 relative overflow-hidden ring-2 ring-primary/20 ring-offset-2 ring-offset-background"
-                        : "border border-border/30 bg-background/50 text-muted-foreground hover:bg-background/80 hover:text-foreground hover:border-primary/50"
-                        }`}
-                    >
-                      {selectedAppType === type && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
-                      {type}
-                    </button>
+            {/* Form Container */}
+            <div className="glass-card p-6 sm:p-10 relative overflow-hidden w-full border border-border bg-card/40 shadow-2xl rounded-3xl">
+              {/* Decorative Background Blob */}
+              <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
+
+              <div key={currentStep} className="space-y-6 sm:space-y-8 relative z-10 w-full">
+                <div className="border-b border-border/50 pb-6 mb-8 flex justify-between items-end">
+                  <div>
+                    <h2 className="font-display text-2xl sm:text-4xl font-black text-foreground tracking-tight">
+                      {activeSteps[currentStep - 1]?.name}
+                    </h2>
+                    {activeSteps[currentStep - 1]?.description && (
+                      <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-xl">{activeSteps[currentStep - 1].description}</p>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if(confirm("Change department? Current progress will be lost.")) {
+                        setSelectedAppType("");
+                        setCurrentStep(1);
+                        setAnswers({});
+                      }
+                    }}
+                    className="text-[10px] font-bold uppercase tracking-wider text-primary/60 hover:text-primary transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/5"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Reset
+                  </button>
+                </div>
+
+                {/* Dynamic Questions */}
+                <div className="space-y-8">
+                  {stepQuestions.map((q) => (
+                    <div key={q.id} className="space-y-4">
+                      <label className="text-sm sm:text-base font-bold text-foreground flex items-center gap-2">
+                        {q.label}
+                        {q.required && <span className="text-primary text-xl -mt-1">*</span>}
+                      </label>
+                      {q.type === "textarea" ? (
+                        <textarea
+                          value={answers[q.id] || ""}
+                          onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                          className="w-full rounded-2xl border border-border/30 bg-background/50 px-6 py-5 text-foreground placeholder-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none min-h-[160px] backdrop-blur-md transition-all text-sm sm:text-base leading-relaxed shadow-inner"
+                          placeholder="Type your detailed answer here..."
+                        />
+                      ) : q.type === "select" ? (
+                        <div className="relative">
+                          <select
+                            value={answers[q.id] || ""}
+                            onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                            className="w-full rounded-2xl border border-border/30 bg-background/50 px-6 py-5 text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-md transition-all text-sm sm:text-base cursor-pointer shadow-inner"
+                          >
+                            <option value="" disabled className="bg-card text-muted-foreground">Select an option...</option>
+                            {q.options?.map((o) => (
+                              <option key={o} value={o} className="bg-card text-foreground">{o}</option>
+                            ))}
+                          </select>
+                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                            <ChevronRight className="w-5 h-5 rotate-90" />
+                          </div>
+                        </div>
+                      ) : q.type === "boolean" ? (
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <label className={`flex items-center justify-center gap-3 cursor-pointer py-5 rounded-2xl border-2 transition-all flex-1 backdrop-blur-md font-black tracking-widest text-sm sm:text-base ${answers[q.id] === "Yes" ? "bg-emerald/10 border-emerald/50 text-emerald shadow-[0_0_20px_hsla(152,69%,40%,0.1)] scale-[1.02]" : "bg-background/40 border-border/30 hover:border-emerald/30 text-muted-foreground opacity-60 hover:opacity-100"}`}>
+                            <input type="radio" checked={answers[q.id] === "Yes"} onChange={() => setAnswers({ ...answers, [q.id]: "Yes" })} className="hidden" />
+                            <Check className={`w-5 h-5 ${answers[q.id] === "Yes" ? "opacity-100" : "opacity-20"}`} /> YES
+                          </label>
+                          <label className={`flex items-center justify-center gap-3 cursor-pointer py-5 rounded-2xl border-2 transition-all flex-1 backdrop-blur-md font-black tracking-widest text-sm sm:text-base ${answers[q.id] === "No" ? "bg-crimson/10 border-crimson/50 text-crimson shadow-[0_0_20px_hsla(352,82%,62%,0.1)] scale-[1.02]" : "bg-background/40 border-border/30 hover:border-crimson/30 text-muted-foreground opacity-60 hover:opacity-100"}`}>
+                            <input type="radio" checked={answers[q.id] === "No"} onChange={() => setAnswers({ ...answers, [q.id]: "No" })} className="hidden" />
+                            <X className={`w-5 h-5 ${answers[q.id] === "No" ? "opacity-100" : "opacity-20"}`} /> NO
+                          </label>
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={answers[q.id] || ""}
+                          onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                          className="w-full rounded-2xl border border-border/30 bg-background/50 px-6 py-5 text-foreground placeholder-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-md transition-all text-sm sm:text-base shadow-inner"
+                          placeholder="Type your answer here..."
+                        />
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
 
-            {/* Dynamic Questions */}
-            {stepQuestions.map((q) => (
-              <div key={q.id} className="space-y-3">
-                <label className="text-sm font-bold text-foreground block">
-                  {q.label}
-                  {q.required && <span className="text-primary ml-1.5">*</span>}
-                </label>
-                {q.type === "textarea" ? (
-                  <textarea
-                    value={answers[q.id] || ""}
-                    onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                    className="w-full rounded-xl border border-border/30 bg-background/50 px-5 py-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none min-h-[120px] backdrop-blur-sm transition-all text-sm sm:text-base leading-relaxed overflow-y-auto"
-                    placeholder="Type your detailed answer here..."
-                  />
-                ) : q.type === "select" ? (
-                  <div className="relative">
-                    <select
-                      value={answers[q.id] || ""}
-                      onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                      className="w-full rounded-xl border border-border/30 bg-background/50 px-5 py-4 text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-sm transition-all text-sm sm:text-base cursor-pointer"
+                {/* Nav buttons */}
+                <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-12 pt-8 border-t border-border/50 relative z-10 w-full">
+                  <button
+                    onClick={() => setCurrentStep((s) => s - 1)}
+                    disabled={currentStep === 1}
+                    className="flex items-center justify-center sm:justify-start gap-2 px-8 py-4 rounded-2xl bg-background/50 border border-border/50 text-foreground font-bold hover:bg-background/80 disabled:opacity-20 disabled:cursor-not-allowed transition-all w-full sm:w-auto"
+                  >
+                    <ChevronLeft className="w-5 h-5" /> Back
+                  </button>
+
+                  {currentStep < maxStep ? (
+                    <button
+                      onClick={() => setCurrentStep((s) => s + 1)}
+                      disabled={!canGoNext}
+                      className="flex items-center justify-center sm:justify-end gap-3 px-10 py-4 rounded-2xl bg-primary text-primary-foreground font-black disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all shadow-[0_8px_25px_-5px_hsla(352,82%,62%,0.4)] hover:shadow-[0_12px_30px_-5px_hsla(352,82%,62%,0.5)] hover:-translate-y-1 active:scale-95 w-full sm:w-auto uppercase tracking-wider"
                     >
-                      <option value="" disabled className="bg-card text-muted-foreground">Select an option...</option>
-                      {q.options?.map((o) => (
-                        <option key={o} value={o} className="bg-card text-foreground">{o}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                      ▼
-                    </div>
-                  </div>
-                ) : q.type === "boolean" ? (
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <label className={`flex items-center justify-center gap-2 cursor-pointer py-4 rounded-xl border transition-all flex-1 backdrop-blur-sm ${answers[q.id] === "Yes" ? "bg-emerald/10 border-emerald/50 text-emerald shadow-[0_0_10px_hsla(152,69%,40%,0.1)] relative overflow-hidden" : "bg-background/50 border-border/30 hover:bg-background/80 hover:border-emerald/30 text-muted-foreground"}`}>
-                      {answers[q.id] === "Yes" && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald" />}
-                      <input type="radio" checked={answers[q.id] === "Yes"} onChange={() => setAnswers({ ...answers, [q.id]: "Yes" })} className="hidden" />
-                      <span className="font-bold text-sm sm:text-base tracking-wide">YES</span>
-                    </label>
-                    <label className={`flex items-center justify-center gap-2 cursor-pointer py-4 rounded-xl border transition-all flex-1 backdrop-blur-sm ${answers[q.id] === "No" ? "bg-crimson/10 border-crimson/50 text-crimson shadow-[0_0_10px_hsla(352,82%,62%,0.1)] relative overflow-hidden" : "bg-background/50 border-border/30 hover:bg-background/80 hover:border-crimson/30 text-muted-foreground"}`}>
-                      {answers[q.id] === "No" && <div className="absolute left-0 top-0 bottom-0 w-1 bg-crimson" />}
-                      <input type="radio" checked={answers[q.id] === "No"} onChange={() => setAnswers({ ...answers, [q.id]: "No" })} className="hidden" />
-                      <span className="font-bold text-sm sm:text-base tracking-wide">NO</span>
-                    </label>
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={answers[q.id] || ""}
-                    onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                    className="w-full rounded-xl border border-border/30 bg-background/50 px-5 py-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-sm transition-all text-sm sm:text-base"
-                    placeholder="Type your answer here..."
-                  />
-                )}
+                      Continue <ChevronRight className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!canGoNext}
+                      className="flex items-center justify-center sm:justify-end gap-3 px-10 py-4 rounded-2xl bg-primary text-primary-foreground font-black disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all shadow-[0_8px_25px_-5px_hsla(352,82%,62%,0.5)] hover:shadow-[0_12px_30px_-5px_hsla(352,82%,62%,0.7)] hover:-translate-y-1 active:scale-95 w-full sm:w-auto uppercase tracking-wider"
+                    >
+                      Submit Application <Send className="w-5 h-5 ml-1" />
+                    </button>
+                  )}
+                </div>
               </div>
-            ))}
-          </div>
-
-          {/* Nav buttons */}
-          <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-10 pt-6 border-t border-border/50 relative z-10 w-full">
-            <button
-              onClick={() => setCurrentStep((s) => s - 1)}
-              disabled={currentStep === 1}
-              className="flex items-center justify-center sm:justify-start gap-2 px-6 py-3.5 rounded-xl bg-background/50 border border-border/50 text-foreground font-semibold hover:bg-background/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all w-full sm:w-auto"
-            >
-              <ChevronLeft className="w-5 h-5" /> Back
-            </button>
-
-            {currentStep < maxStep ? (
-              <button
-                onClick={() => setCurrentStep((s) => s + 1)}
-                disabled={!canGoNext}
-                className="flex items-center justify-center sm:justify-end gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_0_hsla(352,82%,62%,0.2)] hover:shadow-[0_6px_20px_hsla(352,82%,62%,0.3)] hover:-translate-y-0.5 max-w-full sm:w-auto w-full"
-              >
-                Continue <ChevronRight className="w-5 h-5" />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!canGoNext}
-                className="flex items-center justify-center sm:justify-end gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_0_hsla(352,82%,62%,0.3)] hover:shadow-[0_6px_20px_hsla(352,82%,62%,0.5)] hover:-translate-y-0.5 max-w-full sm:w-auto w-full"
-              >
-                Submit Application <Send className="w-5 h-5 ml-1" />
-              </button>
-            )}
-          </div>
-        </div>
-        {/* Spacer for mobile */}
-        <div className="h-12 w-full" />
+            </div>
+          </>
+        )}
       </div>
     </PageWrapper>
   );

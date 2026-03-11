@@ -12,6 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const webhookUrls: Record<string, string | undefined> = {
         'open': process.env.DISCORD_WEBHOOK_URL_OPEN,
         'results': process.env.DISCORD_WEBHOOK_URL_RESULTS,
+        'logs': process.env.DISCORD_WEBHOOK_URL_LOGS,
     };
 
     const url = webhookUrls[type];
