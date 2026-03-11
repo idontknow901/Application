@@ -24,6 +24,16 @@ const Admin = () => {
     label: "", step: 1, type: "text"
   });
 
+  // Local state for image URL to ensure it persists and remains controlled
+  const [imageUrlInput, setImageUrlInput] = useState(config.statusImageUrl || "");
+
+  // Update local state when config loads from Firestore
+  useEffect(() => {
+    if (config.statusImageUrl) {
+      setImageUrlInput(config.statusImageUrl);
+    }
+  }, [config.statusImageUrl]);
+
   const [logSessionId, setLogSessionId] = useState(() => sessionStorage.getItem("epic-rail-log-session-id") || "");
   const [logHistory, setLogHistory] = useState<string[]>(() => {
     const saved = sessionStorage.getItem("epic-rail-log-history");
@@ -460,13 +470,29 @@ const Admin = () => {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        defaultValue={config.statusImageUrl}
-                        onBlur={(e) => updateStatusImage(e.target.value)}
+                        value={imageUrlInput}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
                         placeholder="Paste image URL (Discord, Imgur, etc.)"
                         className="flex-1 rounded-lg border border-border/30 bg-background/50 px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
+                      <button
+                        onClick={() => updateStatusImage(imageUrlInput)}
+                        className="px-4 py-2 botghost-btn-primary text-xs font-bold whitespace-nowrap"
+                      >
+                        Save
+                      </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-2 italic">Changes are applied immediately to the persistent Discord message.</p>
+                    {imageUrlInput && (
+                      <div className="mt-4 rounded-lg overflow-hidden border border-border/30 max-w-xs mx-auto">
+                        <img 
+                          src={imageUrlInput} 
+                          alt="Status Preview" 
+                          className="w-full h-auto object-cover max-h-40"
+                          onError={(e) => (e.currentTarget.src = "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg")}
+                        />
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-2 italic text-center">Changes are applied immediately to the persistent Discord message.</p>
                   </div>
 
                   <div className="p-4 rounded-xl bg-background/50 border border-border/30">
