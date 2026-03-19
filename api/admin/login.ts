@@ -29,10 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
-    console.log(`🔍 [Dev Log] Loaded password hash starting with: ${trimmedHash.substring(0, 3)}...`);
-
-    // Simple plain text check as it was before bcrypt implementation
-    const isMatch = password.trim() === trimmedHash;
+    // Verify using bcrypt for secure hashing
+    const isMatch = await bcrypt.compare(password.trim(), trimmedHash);
 
     if (!isMatch) {
         console.warn(`⚠️ Login attempt failed. Hash in ENVs starts with: ${trimmedHash.substring(0, 10)}...`);
