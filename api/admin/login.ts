@@ -29,6 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
+    console.log(`🔍 [Dev Log] Loaded password hash starting with: ${trimmedHash.substring(0, 3)}...`);
+
     // Simple plain text check as it was before bcrypt implementation
     const isMatch = password.trim() === trimmedHash;
 
