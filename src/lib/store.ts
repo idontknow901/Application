@@ -40,6 +40,11 @@ export interface Application {
   submittedAt: string;
 }
 
+export interface CategorySetting {
+  image: string;
+  description: string;
+}
+
 export interface AppConfig {
   recruitmentOpen: boolean;
   openApplicationTypes: ApplicationType[];
@@ -48,6 +53,7 @@ export interface AppConfig {
   discordWebhookUrlLogs?: string;
   discordWebhookMessageIdOpen?: string;
   statusImageUrl?: string;
+  categorySettings?: Record<string, CategorySetting>;
 }
 
 export const DEFAULT_STEPS: AppStep[] = [
@@ -65,6 +71,13 @@ export const DEFAULT_CONFIG: AppConfig = {
   discordWebhookUrlLogs: "",
   discordWebhookMessageIdOpen: "",
   statusImageUrl: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg",
+  categorySettings: APPLICATION_TYPES.reduce((acc, type) => ({
+    ...acc,
+    [type]: {
+      image: "https://raw.githubusercontent.com/idontknow901/Application/main/public/placeholder.svg",
+      description: `Apply for ${type}`
+    }
+  }), {} as Record<string, CategorySetting>)
 };
 
 export const notifyDiscord = async (type: 'open' | 'results' | 'logs', payload: any, messageId?: string, onNewMessageId?: (id: string) => void) => {

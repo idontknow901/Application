@@ -178,6 +178,40 @@
   .botghost-btn-primary:focus-visible {
     @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
   }
+
+  .google-form-container {
+    @apply min-h-screen pb-12 pt-28;
+    background: hsl(var(--background));
+  }
+
+  .google-form-header-card {
+    @apply rounded-xl border-t-[10px] border-primary shadow-2xl overflow-hidden mb-4;
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    border-color: hsl(var(--primary));
+  }
+
+  .google-form-section-card {
+    @apply rounded-xl bg-primary text-primary-foreground p-3 font-bold text-lg mb-4 shadow-lg;
+  }
+
+  .google-form-question-card {
+    @apply rounded-xl shadow-xl p-6 mb-4 border border-white/5;
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(12px);
+  }
+
+  .google-form-btn-next {
+    @apply bg-primary text-primary-foreground px-8 py-2.5 rounded-lg font-bold hover:brightness-110 transition-all shadow-lg active:scale-95 uppercase tracking-wider text-sm;
+  }
+
+  .google-form-btn-back {
+    @apply bg-transparent text-primary px-8 py-2.5 rounded-lg font-bold hover:bg-primary/10 transition-all active:scale-95 uppercase tracking-wider text-sm border border-primary/20;
+  }
+
+  .google-form-btn-clear {
+    @apply text-muted-foreground text-xs font-bold uppercase tracking-widest hover:text-primary transition-colors;
+  }
 }
 
 @keyframes train-move {
