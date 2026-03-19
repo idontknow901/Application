@@ -91,27 +91,12 @@ const Admin = () => {
         store.setAdminAuth(true);
         setAuthenticated(true);
         toast.success("Welcome back, Admin!");
-      } else if (res.status === 404) {
-        // Fallback for local development where backend is not running
-        if (password.trim() === "Momtadidilovesrahulgandi") {
-          store.setAdminAuth(true);
-          setAuthenticated(true);
-          toast.success("Logged in via local development fallback.");
-          return;
-        }
-        toast.error("Login backend not found. Use 'Momtadidilovesrahulgandi' for local access.");
+        // triggerLog will be handled by useEffect
       } else {
-        toast.error("Invalid administrator password");
+        toast.error("Invalid password");
       }
     } catch (error) {
-      // Network errors or blocked requests
-      if (password.trim() === "Momtadidilovesrahulgandi") {
-        store.setAdminAuth(true);
-        setAuthenticated(true);
-        toast.success("Logged in via local development fallback.");
-        return;
-      }
-      toast.error("Login service unavailable. Use 'Momtadidilovesrahulgandi' for local access.");
+      toast.error("Login service unavailable");
     }
   };
   const isSyncingRef = useRef(false);
