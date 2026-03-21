@@ -315,9 +315,11 @@ const Apply = () => {
 
           <div className="flex flex-wrap items-center gap-4">
             <button 
-              onClick={() => {
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
                 if(confirm("Change category? Current progress will be lost.")) {
-                  setSelectedAppType(null);
+                  setSelectedAppType("");
                   setAnswers({});
                   setCurrentStep(1);
                 }
@@ -328,9 +330,12 @@ const Apply = () => {
             </button>
 
             <button 
-              onClick={() => {
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
                 if(confirm("Clear form? All progress will be lost.")) {
                   setAnswers({});
+                  setCurrentStep(1);
                 }
               }}
               className="google-form-btn-clear"
